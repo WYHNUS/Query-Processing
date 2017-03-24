@@ -1,0 +1,16 @@
+.idea/*
+.DS_Store
+
+# ignore files for testing purpose
+classes/*
+*.det
+*.md
+*.det
+*.tbl
+*.stat
+*.txt
+*.in
+*.out
+qq
+
+!README.md
