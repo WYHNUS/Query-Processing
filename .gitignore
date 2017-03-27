@@ -1,5 +1,6 @@
 .idea/*
 .DS_Store
+.project
 
 # ignore files for testing purpose
 classes/*
