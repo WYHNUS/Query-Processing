@@ -81,7 +81,7 @@ public class QueryMain {
 			System.exit(1);
 		}
 
-		/** This part is used When some random initial plan is required instead of comple optimized plan **/
+		/** This part is used When some random initial plan is required instead of complete optimized plan **/
 		// RandomInitialPlan rip = new RandomInitialPlan(sqlquery);
 		// Operator logicalroot = rip.prepareInitialPlan();
 		// PlanCost pc = new PlanCost();

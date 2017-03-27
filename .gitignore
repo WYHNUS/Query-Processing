@@ -3,7 +3,6 @@
 
 # ignore files for testing purpose
 classes/*
-*.det
 *.md
 *.det
 *.tbl
@@ -12,5 +11,9 @@ classes/*
 *.in
 *.out
 qq
+
+# include schema and test cases
+!testcases/*.det
+!testcases/*.in
 
 !README.md
