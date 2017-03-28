@@ -93,7 +93,7 @@ public class QueryMain {
 		/** Use random Optimization algorithm to get a random optimized
 		 execution plan
 		 **/
-		RandomOptimizer ro = new RandomOptimizer(sqlquery);
+		Optimizer ro = new RandomOptimizer(sqlquery);
 		Operator logicalRoot = ro.getOptimizedPlan();
 		if (logicalRoot == null) {
 			System.out.println("root is null");
@@ -101,7 +101,7 @@ public class QueryMain {
 		}
 
 		/** preparing the execution plan **/
-		Operator root = RandomOptimizer.makeExecPlan(logicalRoot);
+		Operator root = ro.makeExecPlan(logicalRoot);
 
 		/** Print final Plan **/
 		System.out.println("----------------------Execution Plan----------------");
