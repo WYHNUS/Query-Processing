@@ -46,7 +46,6 @@ public class RandomOptimizer {
 		return neighbor;
 	}
 
-
 	/** implementation of Iterative Improvement Algorithm
 	 ** for Randomized optimization of Query Plan
 	 **/
@@ -163,7 +162,7 @@ public class RandomOptimizer {
 	 **/
 	protected Operator neighborCommut(Operator root, int joinNum) {
 		System.out.println("------------------neighbor by commutative---------------");
-		/** find the node to be altered**/
+		/** find the node to be altered **/
 		Join node = (Join) findNodeAt(root,joinNum);
 		Operator left = node.getLeft();
 		Operator right = node.getRight();
@@ -318,19 +317,19 @@ public class RandomOptimizer {
 		}
 	}
 
-	/** modifies the schema of operators which are modified due to selecing an alternative neighbor plan **/
+	/** modifies the schema of operators which are modified due to selecting an alternative neighbor plan **/
 	private void modifySchema(Operator node) {
-		if(node.getOpType()==OpType.JOIN){
+		if (node.getOpType() == OpType.JOIN) {
 			Operator left = ((Join)node).getLeft();
-			Operator right =((Join)node).getRight();
+			Operator right = ((Join)node).getRight();
 			modifySchema(left);
 			modifySchema(right);
 			node.setSchema(left.getSchema().joinWith(right.getSchema()));
-		}else if(node.getOpType()==OpType.SELECT){
+		} else if (node.getOpType() == OpType.SELECT) {
 			Operator base= ((Select)node).getBase();
 			modifySchema(base);
 			node.setSchema(base.getSchema());
-		}else if(node.getOpType()==OpType.PROJECT){
+		} else if (node.getOpType() == OpType.PROJECT) {
 			Operator base = ((Project)node).getBase();
 			modifySchema(base);
 			Vector attrlist = ((Project)node).getProjAttr();
