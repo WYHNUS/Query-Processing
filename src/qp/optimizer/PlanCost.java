@@ -142,28 +142,36 @@ public class PlanCost{
 		//System.out.println("PlanCost: jointype="+joinType);
 
 		switch(joinType){
-			case JoinType.NESTEDJOIN:
-				joincost = leftpages*rightpages;
-				break;
-			case JoinType.BLOCKNESTED:
-				joincost = 0;
-				break;
-			case JoinType.SORTMERGE:
-				joincost = 0;
-				break;
-			case JoinType.HASHJOIN:
-				joincost = 0;
-				break;
-			default:
-				joincost=0;
-				break;
+		case JoinType.NESTEDJOIN:
+			joincost = Math.min(leftpages, rightpages) + leftpages*rightpages;
+			break;
+		case JoinType.BLOCKNESTED:
+			int numOfIteration = ((int) Math.ceil((double) Math.min(rightpages, leftpages)/numbuff) - 2);
+			System.out.println(numOfIteration);
+			joincost = numOfIteration * Math.max(rightpages, leftpages);
+			break;
+		case JoinType.SORTMERGE:			
+			joincost = leftpages + rightpages + getSortCost(numbuff, leftpages) + getSortCost(numbuff, rightpages);
+			break;
+		case JoinType.HASHJOIN:
+			joincost = 3 * (leftpages + rightpages);
+			break;
+		default:
+			joincost=0;
+			break;
 		}
 
 		cost = cost+joincost;
 		return outtuples;
 	}
 
-
+	protected int getSortCost(int numBuff, int numOfPages) {
+		int numOfIO = 0;
+		int numOfSortedRuns = (int) Math.ceil((double) numOfPages/numBuff);
+		int numOfPasses = (int) Math.ceil(Math.log(numOfSortedRuns) /Math.log(numBuff - 1));
+		numOfIO = 2 * (numOfPasses + 1) * numOfPages;
+		return numOfIO;
+	}
 
 	/** Find number of incoming tuples, Using the selectivity find # of output tuples
 	 ** And statistics about the attributes
