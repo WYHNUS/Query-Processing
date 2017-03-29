@@ -83,15 +83,16 @@ public class PlanCost{
 
 		/** get size of the tuple in output & correspondigly calculate
 		 ** buffer capacity, i.e., number of tuples per page **/
-		int tuplesize=node.getSchema().getTupleSize();
+		int tuplesize = node.getSchema().getTupleSize();
 		int outcapacity = Batch.getPageSize()/tuplesize;
 		int leftuplesize= leftschema.getTupleSize();
 		int leftcapacity = Batch.getPageSize()/leftuplesize;
-		int righttuplesize= rightschema.getTupleSize();
+		int righttuplesize = rightschema.getTupleSize();
 		int rightcapacity = Batch.getPageSize()/righttuplesize;
 
-		int leftpages=(int) Math.ceil(((double)lefttuples)/(double)leftcapacity);
-		int rightpages=(int) Math.ceil(((double)righttuples)/(double) rightcapacity);
+		/** number of pages -> used to calculate joincost **/
+		int leftpages = (int) Math.ceil(((double)lefttuples)/(double)leftcapacity);
+		int rightpages = (int) Math.ceil(((double)righttuples)/(double) rightcapacity);
 
 		Attribute leftjoinAttr = con.getLhs();
 		Attribute rightjoinAttr = (Attribute)con.getRhs();
@@ -99,15 +100,16 @@ public class PlanCost{
 		int rightattrind = rightschema.indexOf(rightjoinAttr);
 		leftjoinAttr = leftschema.getAttribute(leftattrind);
 		rightjoinAttr = rightschema.getAttribute(rightattrind);
+
 		/** number of distinct values of left and right join attribute **/
 		int leftattrdistn = ((Integer)ht.get(leftjoinAttr)).intValue();
 		int rightattrdistn = ((Integer)ht.get(rightjoinAttr)).intValue();
 
-		int outtuples = (int) Math.ceil(((double) lefttuples*righttuples)/(double) Math.max(leftattrdistn,rightattrdistn));
+		int outtuples = (int) Math.ceil(((double) lefttuples*righttuples) / (double) Math.max(leftattrdistn,rightattrdistn));
 
-		int mindistinct = Math.min(leftattrdistn,rightattrdistn);
-		ht.put(leftjoinAttr,new Integer(mindistinct));
-		ht.put(leftjoinAttr,new Integer(mindistinct));
+		int mindistinct = Math.min(leftattrdistn, rightattrdistn);
+		ht.put(leftjoinAttr, new Integer(mindistinct));
+		ht.put(rightjoinAttr, new Integer(mindistinct));
 
 		/** now calculate the cost of the operation**/
 		int joinType = node.getJoinType();

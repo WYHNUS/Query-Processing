@@ -18,9 +18,9 @@ public class Join extends Operator{
 
     public Join(Operator left, Operator right, Condition cn, int type){
         super(type);
-        this.left=left;
-        this.right=right;
-        this.con=cn;
+        this.left = left;
+        this.right = right;
+        this.con = cn;
     }
 
     /** number of buffers available to this join operator **/
@@ -88,8 +88,3 @@ public class Join extends Operator{
         return jn;
     }
 }
-
-
-
-
-

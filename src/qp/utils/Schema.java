@@ -15,7 +15,7 @@ public class Schema implements Serializable{
 	}
 
 	public void setTupleSize(int size){
-		tuplesize=size;
+		tuplesize = size;
 	}
 
 	public int getTupleSize(){

@@ -117,8 +117,3 @@ public class Attribute implements Serializable{
 		return newattr;
 	}
 }
-
-
-
-
-

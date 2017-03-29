@@ -1,9 +1,10 @@
 package qp.optimizer;
 
+import qp.operators.Join;
+import qp.operators.JoinType;
+import qp.operators.OpType;
 import qp.operators.Operator;
-import qp.utils.Attribute;
-import qp.utils.Condition;
-import qp.utils.SQLQuery;
+import qp.utils.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -12,21 +13,38 @@ import java.util.HashSet;
 public class DPPlan extends BasicPlan {
     private ArrayList<String> joinTablesList;       // list of distinct tables that are involved in join query
     private ArrayList<String> currentResult;        // helper variable for generating combination
-    private HashMap<String, Integer> memo;          // memo table of <TableCombination, cost>
+
+    // store the <lhsTable, rhsTable, Condition> relationship
+    // Note: there might be multiple conditions between two tables
+    private HashMap<String, HashMap<String, ArrayList<Condition>>> conditionDict;
+    private HashMap<String, Integer> costMemo;      // store <TableCombination, cost>
+    private HashMap<String, Operator> joinMemo;     // store <TableCombination, JoinNode>
 
     public DPPlan(SQLQuery sqlquery) {
         super(sqlquery);
         joinTablesList = new ArrayList<>();
         currentResult = new ArrayList<>();
-        memo = new HashMap<>();
+
+        conditionDict = new HashMap<>();
+        costMemo = new HashMap<>();
+        joinMemo = new HashMap<>();
     }
 
     /**
      * Create join operators:
      * Implementation only apply standard DP procedure to join operation
      **/
-    public void createJoinOp(){
+    public void createJoinOp() {
         HashSet<String> joinTablesSet = new HashSet<>();
+
+        /**
+         *  1. Construct condition chain (conditionDict) to record down join conditions
+         *  2. HashMap (costMemo) to store minimum costs for each plan
+         *  3. HashMap to store meta data (number of tuples; capacity; attributes) for each table
+         *          -> to compute cost
+         *  4. HashMap (joinMemo) to store Join node for each suboptimal plan
+         *          -> to construct node
+         **/
 
         // bottom-up DP initialization
         for (int i=0; i<numJoin; i++) {
@@ -34,24 +52,42 @@ public class DPPlan extends BasicPlan {
             String leftTableName = cn.getLhs().getTabName();
             String rightTableName = ((Attribute) cn.getRhs()).getTabName();
 
+            /** store all join conditions **/
+            HashMap<String, ArrayList<Condition>> nestedDict = new HashMap<>();
+            ArrayList<Condition> conditionList = new ArrayList<>();
+            // check if already exists
+            if (conditionDict.containsKey(leftTableName)) {
+                nestedDict = conditionDict.get(leftTableName);
+                if (nestedDict.containsKey(rightTableName)) {
+                    conditionList = nestedDict.get(rightTableName);
+                }
+
+            }
+            conditionList.add(cn);
+            nestedDict.put(rightTableName, conditionList);
+            conditionDict.put(leftTableName, nestedDict);
+
+            /** store distinct tables involved in join operation **/
             if (!joinTablesSet.contains(leftTableName)) {
                 joinTablesSet.add(leftTableName);
                 joinTablesList.add(leftTableName);
-                memo.put(leftTableName, accessPlanCost((Operator)tabOpHash.get(leftTableName)));
+                costMemo.put(leftTableName, accessPlanCost((Operator)tabOpHash.get(leftTableName)));
             }
             if (!joinTablesSet.contains(rightTableName)) {
                 joinTablesSet.add(rightTableName);
                 joinTablesList.add(rightTableName);
-                memo.put(rightTableName, accessPlanCost((Operator)tabOpHash.get(rightTableName)));
+                costMemo.put(rightTableName, accessPlanCost((Operator)tabOpHash.get(rightTableName)));
             }
         }
 
         for (int i=2; i<=joinTablesList.size(); i++) {
-            // calculate cost for each i-pair-wise-tables, and select the minimum one
+            /** calculate cost for each i-pair-wise-tables, and record down the minimum one **/
             ArrayList<ArrayList<String>> permutations = generateCombination(joinTablesList, i);
 
             for (ArrayList<String> permutation : permutations) {
                 int minCost = Integer.MAX_VALUE;
+                ArrayList<String> minLhsJoin = new ArrayList<>();
+                ArrayList<String> minRhsJoin = new ArrayList<>();
                 ArrayList<ArrayList<ArrayList<String>>> planList = generatePlans(permutation);
 
                 for (int j=0; j<planList.size(); j++) {
@@ -62,17 +98,66 @@ public class DPPlan extends BasicPlan {
 
                     if (cost < minCost) {
                         minCost = cost;
+                        // record down the lhs and rhs as well
+                        minLhsJoin = lhsJoin;
+                        minRhsJoin = rhsJoin;
                     }
                 }
 
                 // concatenate String together to generate key
-                String planKey = "";
-                for (int j=0; j<permutation.size(); j++) {
-                    planKey += permutation.get(j);
-                }
-                memo.put(planKey, minCost);
+                costMemo.put(convertLstToString(permutation), minCost);
+
+                /** construct corresponding join node for sub-optimal solution **/
+                Operator left = joinMemo.get(convertLstToString(minLhsJoin));
+                Operator right = joinMemo.get(convertLstToString(minRhsJoin));
+
+                // clone left and right operators before performing any action
+                Operator minLeft = (Operator) left.clone();
+                minLeft.setSchema((Schema) left.getSchema().clone());
+                Operator minRight = (Operator) right.clone();
+                minRight.setSchema((Schema) right.getSchema().clone());
+
+                // check for applicable conditions, and construct new Join Operator if possible
+                joinTables(minLhsJoin, minRhsJoin, minLeft, minRight);
+                joinTables(minRhsJoin, minLhsJoin, minLeft, minRight);
+
+                // store the result Join Operator into memo table (minRight and minLeft should have the same structure)
+                joinMemo.put(convertLstToString(permutation), minRight);
             }
         }
+    }
+
+    private void joinTables(ArrayList<String> minLhsJoin, ArrayList<String> minRhsJoin,
+                            Operator minLeft, Operator minRight) {
+        for (int j=0; j<minLhsJoin.size(); j++) {
+            for (int k=0; k<minRhsJoin.size(); k++) {
+                ArrayList<Condition> conditions = getRelation(minLhsJoin.get(j), minRhsJoin.get(k));
+                if (conditions != null) {
+
+                    for (Condition condition: conditions) {
+                        Join minJoinNode = new Join(minLeft, minRight, condition, OpType.JOIN);
+                        minJoinNode.setSchema(minLeft.getSchema().joinWith(minRight.getSchema()));
+
+                        /** randomly select a join type **/
+                        int numJMeth = JoinType.numJoinTypes();
+                        int joinMeth = RandNumb.randInt(0,numJMeth-1);
+                        minJoinNode.setJoinType(joinMeth);
+
+                        // reassign
+                        minLeft = minJoinNode;
+                        minRight = (Operator) minJoinNode.clone();
+                        minRight.setSchema((Schema) minJoinNode.getSchema().clone());
+                    }
+                }
+            }
+        }
+    }
+
+    private ArrayList<Condition> getRelation(String lTable, String rTable) {
+        if (conditionDict.containsKey(lTable))
+            if (conditionDict.get(lTable).containsKey(rTable))
+                return conditionDict.get(lTable).get(rTable);
+        return null;
     }
 
     private int joinPlanCost(ArrayList<String> leftPlanName, ArrayList<String> rightPlanName) {
@@ -80,14 +165,14 @@ public class DPPlan extends BasicPlan {
         int leftPlanCost = 0;
         int rightPlanCost = 0;
 
-        if (memo.containsKey(leftPlanName)) {
-            leftPlanCost = memo.get(leftPlanName);
+        if (costMemo.containsKey(leftPlanName)) {
+            leftPlanCost = costMemo.get(leftPlanName);
         } else {
             System.out.print("Error in calculating join plan cost!");
         }
 
-        if (memo.containsKey(rightPlanName)) {
-            rightPlanCost = memo.get(rightPlanName);
+        if (costMemo.containsKey(rightPlanName)) {
+            rightPlanCost = costMemo.get(rightPlanName);
         } else {
             System.out.print("Error in calculating join plan cost!");
         }

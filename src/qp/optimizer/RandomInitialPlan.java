@@ -19,7 +19,7 @@ public class RandomInitialPlan extends BasicPlan {
 
 		/** Repeat until all the join conditions are considered **/
 		while (bitCList.cardinality() != numJoin) {
-			/** If this condition is already consider chose another join condition **/
+			/** If this condition is already considered, choose another join condition **/
 			while (bitCList.get(jnNum)) {
 				jnNum = RandNumb.randInt(0,numJoin-1);
 			}
