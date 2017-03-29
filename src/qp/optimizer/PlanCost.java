@@ -10,7 +10,7 @@ import java.util.StringTokenizer;
 import java.util.Enumeration;
 import java.io.*;
 
-public class PlanCost{
+public class PlanCost {
 	int cost;
 	int numtuple;
 
@@ -90,9 +90,9 @@ public class PlanCost{
 		int righttuplesize = rightschema.getTupleSize();
 		int rightcapacity = Batch.getPageSize()/righttuplesize;
 
-		/** number of pages -> used to calculate joincost **/
-		int leftpages = (int) Math.ceil(((double)lefttuples)/(double)leftcapacity);
-		int rightpages = (int) Math.ceil(((double)righttuples)/(double) rightcapacity);
+		/** number of pages -> used to calculate joinCost **/
+		int leftPages = (int) Math.ceil(((double)lefttuples)/(double)leftcapacity);
+		int rightPages = (int) Math.ceil(((double)righttuples)/(double) rightcapacity);
 
 		Attribute leftjoinAttr = con.getLhs();
 		Attribute rightjoinAttr = (Attribute)con.getRhs();
@@ -113,38 +113,40 @@ public class PlanCost{
 
 		/** now calculate the cost of the operation**/
 		int joinType = node.getJoinType();
-		/** number of buffers allotted to this join**/
-		int numbuff = BufferManager.getBuffersPerJoin();
+		int joinCost = PlanCost.getJoinCost(joinType, leftPages, rightPages);
+		//System.out.println("PlanCost: jointype = " + joinType);
 
-		int joincost;
-
-		//System.out.println("PlanCost: jointype="+joinType);
-
-		switch(joinType){
-			case JoinType.NESTEDJOIN:
-				joincost = Math.min(leftpages, rightpages) + leftpages*rightpages;
-				break;
-			case JoinType.BLOCKNESTED:
-				int numOfIteration = ((int) Math.ceil((double) Math.min(rightpages, leftpages)/numbuff) - 2);
-				System.out.println(numOfIteration);
-				joincost = numOfIteration * Math.max(rightpages, leftpages);
-				break;
-			case JoinType.SORTMERGE:
-				joincost = leftpages + rightpages + getSortCost(numbuff, leftpages) + getSortCost(numbuff, rightpages);
-				break;
-			case JoinType.HASHJOIN:
-				joincost = 3 * (leftpages + rightpages);
-				break;
-			default:
-				joincost=0;
-				break;
-		}
-
-		cost = cost+joincost;
+		cost = cost + joinCost;
 		return outtuples;
 	}
 
-	protected int getSortCost(int numBuff, int numOfPages) {
+	public static int getJoinCost(int joinType, int leftPages, int rightPages) {
+		int joinCost;
+		int numBuff = BufferManager.getBuffersPerJoin();
+
+		switch(joinType){
+			case JoinType.NESTEDJOIN:
+				joinCost = Math.min(leftPages, rightPages) + leftPages*rightPages;
+				break;
+			case JoinType.BLOCKNESTED:
+				int numOfIteration = ((int) Math.ceil((double) Math.min(rightPages, leftPages)/numBuff) - 2);
+				System.out.println(numOfIteration);
+				joinCost = numOfIteration * Math.max(rightPages, leftPages);
+				break;
+			case JoinType.SORTMERGE:
+				joinCost = leftPages + rightPages + getSortCost(numBuff, leftPages) + getSortCost(numBuff, rightPages);
+				break;
+			case JoinType.HASHJOIN:
+				joinCost = 3 * (leftPages + rightPages);
+				break;
+			default:
+				joinCost=0;
+				break;
+		}
+		return joinCost;
+	}
+
+	protected static int getSortCost(int numBuff, int numOfPages) {
 		int numOfIO = 0;
 		int numOfSortedRuns = (int) Math.ceil((double) numOfPages/numBuff);
 		int numOfPasses = (int) Math.ceil(Math.log(numOfSortedRuns) /Math.log(numBuff - 1));
