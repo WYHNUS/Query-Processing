@@ -108,9 +108,9 @@ public class Attribute implements Serializable{
 	}
 
 	public Object clone(){
-		String newtbl =  tblname;
-		String newcol =  colname;
-		Attribute newattr = new Attribute(newtbl,newcol);
+		String newtbl = tblname;
+		String newcol = colname;
+		Attribute newattr = new Attribute(newtbl, newcol);
 		newattr.setType(type);
 		newattr.setKeyType(key);
 		newattr.setAttrSize(attrsize);

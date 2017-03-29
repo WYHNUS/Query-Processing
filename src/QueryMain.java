@@ -81,20 +81,13 @@ public class QueryMain {
 			System.exit(1);
 		}
 
-		/** This part is used When some random initial plan is required instead of complete optimized plan **/
-		// RandomInitialPlan rip = new RandomInitialPlan(sqlquery);
-		// Operator logicalroot = rip.prepareInitialPlan();
-		// PlanCost pc = new PlanCost();
-		// int initCost = pc.getCost(logicalroot);
-		// Debug.PPrint(logicalroot);
-		// System.out.print("   "+initCost);
-		// System.out.println();
-
-		/** Use random Optimization algorithm to get a random optimized
-		 execution plan
+		/** Use either dynamic programming or random optimization algorithm
+		 *  to get an execution plan
 		 **/
-		Optimizer ro = new RandomOptimizer(sqlquery);
+//		Optimizer ro = new RandomOptimizer(sqlquery);
+		Optimizer ro = new DPOptimizer(sqlquery);
 		Operator logicalRoot = ro.getOptimizedPlan();
+
 		if (logicalRoot == null) {
 			System.out.println("root is null");
 			System.exit(1);

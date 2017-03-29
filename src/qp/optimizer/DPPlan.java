@@ -6,25 +6,38 @@ import qp.operators.OpType;
 import qp.operators.Operator;
 import qp.utils.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.util.*;
 
 // helper class to facilitate cost computation
 class Metadata {
     int numTuples;
     int tupleSize;
-    Attribute attributes;
+    ArrayList<Attribute> attributeList;
 
     public  Metadata() {}
 
-    public Metadata(int numTuples, int tupleSize, Attribute attributes) {
+    public Metadata(int numTuples, int tupleSize, ArrayList<Attribute> attributeList) {
         this.numTuples = numTuples;
         this.tupleSize = tupleSize;
-        this.attributes = attributes;
+        this.attributeList = new ArrayList<> ();
+        for (int i=0; i<attributeList.size(); i++) {
+            this.attributeList.add(attributeList.get(i));
+        }
     }
 }
 
+
+/**
+ *  Some explanation on data structure:
+ *  1. Construct condition chain (conditionDict) to record down join conditions
+ *  2. HashMap (costMemo) to store minimum costs for each plan
+ *  3. HashMap (metaMemo) to store meta data (number of tuples; capacity; attributes) for each table
+ *          -> to compute cost
+ *  4. HashMap (joinMemo) to store Join node for each suboptimal plan
+ *          -> to construct node
+ **/
 public class DPPlan extends BasicPlan {
     private ArrayList<String> joinTablesList;       // list of distinct tables that are involved in join query
     private ArrayList<String> currentResult;        // helper variable for generating combination
@@ -54,18 +67,11 @@ public class DPPlan extends BasicPlan {
     public void createJoinOp() {
         HashSet<String> joinTablesSet = new HashSet<>();
 
-        /** randomly select a join type **/
-        int numJMeth = JoinType.numJoinTypes();
-        int joinMethod = RandNumb.randInt(0,numJMeth-1);
-
         /**
-         *  1. Construct condition chain (conditionDict) to record down join conditions
-         *  2. HashMap (costMemo) to store minimum costs for each plan
-         *  3. HashMap to store meta data (number of tuples; capacity; attributes) for each table
-         *          -> to compute cost
-         *  4. HashMap (joinMemo) to store Join node for each suboptimal plan
-         *          -> to construct node
+         * randomly select a join type, or other choices
          **/
+        int numJMeth = JoinType.numJoinTypes();
+        int joinMethod = 2;// RandNumb.randInt(0, numJMeth - 1);
 
         // bottom-up DP initialization
         for (int i=0; i<numJoin; i++) {
@@ -91,13 +97,11 @@ public class DPPlan extends BasicPlan {
             /** store distinct tables involved in join operation **/
             if (!joinTablesSet.contains(leftTableName)) {
                 joinTablesSet.add(leftTableName);
-                joinTablesList.add(leftTableName);
-                costMemo.put(leftTableName, accessPlanCost((Operator)tabOpHash.get(leftTableName)));
+                initializePlan(leftTableName);
             }
             if (!joinTablesSet.contains(rightTableName)) {
                 joinTablesSet.add(rightTableName);
-                joinTablesList.add(rightTableName);
-                costMemo.put(rightTableName, accessPlanCost((Operator)tabOpHash.get(rightTableName)));
+                initializePlan(rightTableName);
             }
         }
 
@@ -143,8 +147,10 @@ public class DPPlan extends BasicPlan {
                 minRight.setSchema((Schema) right.getSchema().clone());
 
                 // check for applicable conditions, and construct new Join Operator if possible
-                joinTables(minLhsJoin, minRhsJoin, minLeft, minRight, joinMethod);
-                joinTables(minRhsJoin, minLhsJoin, minLeft, minRight, joinMethod);
+                ArrayList<Operator> pair = joinTables(minLhsJoin, minRhsJoin, minLeft, minRight, joinMethod);
+                minLeft = pair.get(0); minRight = pair.get(1);
+                pair = joinTables(minRhsJoin, minLhsJoin, minLeft, minRight, joinMethod);
+                minLeft = pair.get(0); minRight = pair.get(1);
 
                 // store the result Join Operator into memo table (minRight and minLeft should have the same structure)
                 joinMemo.put(fullPlanName, minRight);
@@ -153,6 +159,21 @@ public class DPPlan extends BasicPlan {
                 assignMetaData(fullPlanName, leftPlanName, rightPlanName);
             }
         }
+
+        // assign the root
+        root = joinMemo.get(convertLstToString(joinTablesList));
+    }
+
+    private void initializePlan(String tableName) {
+        joinTablesList.add(tableName);
+        joinMemo.put(tableName, (Operator) tabOpHash.get(tableName));
+        try {
+            costMemo.put(tableName, accessPlanCost(tableName));
+        } catch(Exception e) {
+            System.out.println("error in accessPlanCost");
+            e.printStackTrace();
+            System.exit(1);
+        }
     }
 
     private void assignMetaData(String fullPlanName, String leftPlanKeyName, String rightPlanKeyName) {
@@ -160,31 +181,37 @@ public class DPPlan extends BasicPlan {
         Metadata rightMetadata = metaMemo.get(rightPlanKeyName);
 
         /** Stub: still problematic **/
-        Attribute leftJoinAttr = leftMetadata.attributes;
-        Attribute rightJoinAttr = rightMetadata.attributes;
+        ArrayList<Attribute>  leftJoinAttr = leftMetadata.attributeList;
+        ArrayList<Attribute>  rightJoinAttr = rightMetadata.attributeList;
 
         /** number of distinct values of left and right join attribute **/
-//        problematic
-        int leftAttrDistTuple = leftJoinAttr.getAttrSize();
-        int rightAttrDistTuple = rightJoinAttr.getAttrSize();
+        int leftAttrDistTuple = leftJoinAttr.size();
+        int rightAttrDistTuple = rightJoinAttr.size();
 
         /** update metadata memo table **/
         int outNumTuples = (int) Math.ceil(1.0 * leftMetadata.numTuples * rightMetadata.numTuples
                 /  Math.max(leftAttrDistTuple, rightAttrDistTuple));
         int outTupleSize = leftMetadata.tupleSize + rightMetadata.tupleSize;
-//        problematic
-        Attribute outAttributes = null;
+
+        ArrayList<Attribute> outAttributes = new ArrayList<> ();
+        for (Attribute attribute : leftJoinAttr) {
+            outAttributes.add((Attribute) attribute.clone());
+        }
+        for (Attribute attribute : rightJoinAttr) {
+            if (!outAttributes.contains(attribute)) {
+                outAttributes.add((Attribute) attribute.clone());
+            }
+        }
 
         metaMemo.put(fullPlanName, new Metadata(outNumTuples, outTupleSize, outAttributes));
     }
 
-    private void joinTables(ArrayList<String> minLhsJoin, ArrayList<String> minRhsJoin,
+    private ArrayList<Operator> joinTables(ArrayList<String> minLhsJoin, ArrayList<String> minRhsJoin,
                             Operator minLeft, Operator minRight, int joinMethod) {
         for (int j=0; j<minLhsJoin.size(); j++) {
             for (int k=0; k<minRhsJoin.size(); k++) {
                 ArrayList<Condition> conditions = getRelation(minLhsJoin.get(j), minRhsJoin.get(k));
                 if (conditions != null) {
-
                     for (Condition condition: conditions) {
                         Join minJoinNode = new Join(minLeft, minRight, condition, OpType.JOIN);
                         minJoinNode.setSchema(minLeft.getSchema().joinWith(minRight.getSchema()));
@@ -198,6 +225,10 @@ public class DPPlan extends BasicPlan {
                 }
             }
         }
+        ArrayList<Operator> pair = new ArrayList<>();
+        pair.add(minLeft);
+        pair.add(minRight);
+        return pair;
     }
 
     private ArrayList<Condition> getRelation(String lTable, String rTable) {
@@ -244,10 +275,46 @@ public class DPPlan extends BasicPlan {
         return leftPlanCost + rightPlanCost + joinCost;
     }
 
-    private int accessPlanCost(Operator table) {
-        /** Stub **/
-//        haven't implemented
-        return 0;
+    private int accessPlanCost(String tableName) throws Exception {
+        String fileName = tableName + ".stat";
+        Schema schema = ((Operator) tabOpHash.get(tableName)).getSchema();
+
+        int numAttr = schema.getNumCols();
+
+        BufferedReader in = new BufferedReader(new FileReader(fileName));
+        String line = in.readLine();   // First line = number of tuples
+
+        StringTokenizer tokenizer = new StringTokenizer(line);
+        if (tokenizer.countTokens() != 1) {
+            System.out.println("incorrect format of statistics file " + fileName);
+            System.exit(1);
+        }
+
+        String temp = tokenizer.nextToken();
+        /** number of tuples in this table; **/
+        int numTuples = Integer.parseInt(temp);
+        line = in.readLine();
+
+        tokenizer = new StringTokenizer(line);
+        if (tokenizer.countTokens() != numAttr) {
+            System.out.println("incorrect format of statistics file " + fileName);
+            System.exit(1);
+        }
+
+        /** number of tuples per page**/
+        int tupleSize = schema.getTupleSize();
+        int pageSize = Batch.getPageSize() / tupleSize;
+        int numPages= (int) Math.ceil(1.0 * numTuples / pageSize);
+
+        Vector attrList = schema.getAttList();
+        ArrayList<Attribute> attributeList = new ArrayList<>();
+        for (int i=0; i<attrList.size(); i++) {
+            attributeList.add((Attribute) attrList.get(i));
+        }
+
+        metaMemo.put(tableName, new Metadata(numTuples, tupleSize, attributeList));
+
+        return numPages;
     }
 
     private ArrayList<ArrayList<ArrayList<String>>> generatePlans(ArrayList<String> sources) {
@@ -296,7 +363,6 @@ public class DPPlan extends BasicPlan {
 
         for (int i=offset; i<=sourceList.size()-sizeNeeded; i++) {
             // choose or not choose
-            System.out.println(i + "  " + sizeNeeded);
             currentResult.add(sourceList.get(i));
             recursiveCombine(sourceList, result, i + 1, sizeNeeded - 1);
             currentResult.remove(currentResult.size() - 1);
