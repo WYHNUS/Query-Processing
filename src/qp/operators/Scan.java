@@ -10,7 +10,6 @@ import java.util.Vector;
 /** Scan operator - read data from a file */
 
 public class Scan extends Operator {
-
 	String filename;  //corresponding file name
 	String tabname;  //tablename
 
@@ -21,13 +20,11 @@ public class Scan extends Operator {
 	boolean eos;            // To indicate whether end of stream reached or not
 
 	/** Constructor - just save filename  */
-
 	public Scan(String tabname,int type) {
 		super(type);
-		this.tabname=tabname;
+		this.tabname = tabname;
 		filename = tabname + ".tbl";
 	}
-
 
 	public String getTabName(){
 		return tabname;
@@ -74,7 +71,7 @@ public class Scan extends Operator {
 				/** At this point incomplete page is sent and at next call it considered
 				 ** as end of file
 				 **/
-				eos=true;
+				eos = true;
 				return tuples;
 			} catch (IOException e) {
 				System.err.println("Scan:Error reading " + filename);

@@ -91,7 +91,6 @@ public class RandomInitialPlan {
 		}
 	}
 
-
 	/** Create Selection Operators for each of the
 	 ** selection condition mentioned in Condition list
 	 **/
@@ -125,21 +124,23 @@ public class RandomInitialPlan {
 	public void createJoinOp(){
 		BitSet bitCList = new BitSet(numJoin);
 		int jnNum = RandNumb.randInt(0,numJoin-1);
-		Join jn=null;
+		Join jn = null;
+
 		/** Repeat until all the join conditions are considered **/
 		while (bitCList.cardinality() != numJoin) {
 			/** If this condition is already consider chose
 			 ** another join condition
 			 **/
-
 			while (bitCList.get(jnNum)) {
 				jnNum = RandNumb.randInt(0,numJoin-1);
 			}
+
 			Condition cn = (Condition) joinlist.elementAt(jnNum);
 			String lefttab = cn.getLhs().getTabName();
 			String righttab = ((Attribute) cn.getRhs()).getTabName();
 
-			// System.out.println("---------JOIN:---------left X right"+lefttab+righttab);
+//			System.out.println(cn.getExprType());
+//			System.out.println("---------JOIN:---------left: " + lefttab + " and right: " + righttab);
 
 			Operator left = (Operator) tab_op_hash.get(lefttab);
 			Operator right = (Operator) tab_op_hash.get(righttab);
@@ -170,12 +171,12 @@ public class RandomInitialPlan {
 
 	public void createProjectOp(){
 		Operator base = root;
-		if ( projectList == null ) {
+		if (projectList == null) {
 			projectList = new Vector();
 		}
 
-		if(!projectList.isEmpty()){
-			root = new Project(base, projectList,OpType.PROJECT);
+		if (!projectList.isEmpty()) {
+			root = new Project(base, projectList, OpType.PROJECT);
 			Schema newSchema = base.getSchema().subSchema(projectList);
 			root.setSchema(newSchema);
 		}

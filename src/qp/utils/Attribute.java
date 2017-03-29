@@ -5,7 +5,6 @@ package qp.utils;
 import java.io.Serializable;
 
 public class Attribute implements Serializable{
-
 	/** enumerating type of attribute **/
 	public static final int INT=1;
 	public static final int STRING=2;
@@ -32,14 +31,14 @@ public class Attribute implements Serializable{
 		type = typ;
 	}
 
-	public Attribute(String tbl, String col, int typ,int keytype){
+	public Attribute(String tbl, String col, int typ, int keytype){
 		tblname = tbl;
 		colname = col;
 		type = typ;
 		key = keytype;
 	}
 
-	public Attribute(String tbl, String col, int typ,int keytype,int size){
+	public Attribute(String tbl, String col, int typ, int keytype, int size){
 		tblname = tbl;
 		colname = col;
 		type = typ;
@@ -76,7 +75,6 @@ public class Attribute implements Serializable{
 		else
 			return false;
 	}
-
 
 	public void setTabName(String tab){
 		tblname = tab;

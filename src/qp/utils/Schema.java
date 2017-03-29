@@ -93,13 +93,13 @@ public class Schema implements Serializable{
 	 **/
 	public Schema subSchema(Vector attrlist) {
 		Vector newVec = new Vector();
-		int newtupsize=0;
+		int newtupsize = 0;
 		for (int i=0; i<attrlist.size(); i++) {
 			Attribute resAttr = (Attribute) attrlist.elementAt(i);
 			int baseIndex = this.indexOf(resAttr);
 			Attribute baseAttr = this.getAttribute(baseIndex);
 			newVec.add(baseAttr);
-			newtupsize=newtupsize+baseAttr.getAttrSize();
+			newtupsize += baseAttr.getAttrSize();
 		}
 		Schema newsche = new Schema(newVec);
 		newsche.setTupleSize(newtupsize);

@@ -9,36 +9,28 @@ import java.util.Hashtable;
 import java.util.StringTokenizer;
 import java.util.Enumeration;
 import java.io.*;
-public class PlanCost{
 
+public class PlanCost{
 	int cost;
 	int numtuple;
-
 
 	/** If buffers are not enough for a selected join
 	 ** then this plan is not feasible and return
 	 ** a cost of infinity
 	 **/
-
 	boolean isFeasible;
-
 
 	/** Hashtable stores mapping from Attribute name to
 	 ** number of distinct values of that attribute
 	 **/
-
 	Hashtable ht;
-
-
 
 	public PlanCost(){
 		ht = new Hashtable();
 		cost=0;
 	}
 
-
 	/** returns the cost of the plan **/
-
 	public int getCost(Operator root){
 		isFeasible = true;
 		numtuple = calculateCost(root);
@@ -49,19 +41,13 @@ public class PlanCost{
 		}
 	}
 
-
 	/** get number of tuples in estimated results **/
-
 	public int getNumTuples(){
 		return numtuple;
 	}
 
-
 	/** returns number of tuples in the root **/
-
 	protected int calculateCost(Operator node){
-
-
 		if(node.getOpType()==OpType.JOIN){
 			return getStatistics((Join)node);
 		}else if(node.getOpType() == OpType.SELECT){
@@ -71,23 +57,18 @@ public class PlanCost{
 			return getStatistics((Project)node);
 		}else if(node.getOpType() == OpType.SCAN){
 			return getStatistics((Scan)node);
-
 		}
 		return -1;
 	}
 
-
 	/** projection will not change any statistics
 	 ** No cost involved as done on the fly
 	 **/
-
 	protected int getStatistics(Project node){
 		return calculateCost(node.getBase());
 	}
 
-
 	/** calculates the statistics, and cost of join operation **/
-
 	protected int getStatistics(Join node){
 		int lefttuples = calculateCost(node.getLeft());
 		int righttuples= calculateCost(node.getRight());
@@ -100,7 +81,6 @@ public class PlanCost{
 		Schema leftschema = node.getLeft().getSchema();
 		Schema rightschema = node.getRight().getSchema();
 
-
 		/** get size of the tuple in output & correspondigly calculate
 		 ** buffer capacity, i.e., number of tuples per page **/
 		int tuplesize=node.getSchema().getTupleSize();
@@ -112,7 +92,6 @@ public class PlanCost{
 
 		int leftpages=(int) Math.ceil(((double)lefttuples)/(double)leftcapacity);
 		int rightpages=(int) Math.ceil(((double)righttuples)/(double) rightcapacity);
-
 
 		Attribute leftjoinAttr = con.getLhs();
 		Attribute rightjoinAttr = (Attribute)con.getRhs();
@@ -130,11 +109,9 @@ public class PlanCost{
 		ht.put(leftjoinAttr,new Integer(mindistinct));
 		ht.put(leftjoinAttr,new Integer(mindistinct));
 
-
 		/** now calculate the cost of the operation**/
 		int joinType = node.getJoinType();
 		/** number of buffers allotted to this join**/
-
 		int numbuff = BufferManager.getBuffersPerJoin();
 
 		int joincost;
@@ -142,23 +119,23 @@ public class PlanCost{
 		//System.out.println("PlanCost: jointype="+joinType);
 
 		switch(joinType){
-		case JoinType.NESTEDJOIN:
-			joincost = Math.min(leftpages, rightpages) + leftpages*rightpages;
-			break;
-		case JoinType.BLOCKNESTED:
-			int numOfIteration = ((int) Math.ceil((double) Math.min(rightpages, leftpages)/numbuff) - 2);
-			System.out.println(numOfIteration);
-			joincost = numOfIteration * Math.max(rightpages, leftpages);
-			break;
-		case JoinType.SORTMERGE:			
-			joincost = leftpages + rightpages + getSortCost(numbuff, leftpages) + getSortCost(numbuff, rightpages);
-			break;
-		case JoinType.HASHJOIN:
-			joincost = 3 * (leftpages + rightpages);
-			break;
-		default:
-			joincost=0;
-			break;
+			case JoinType.NESTEDJOIN:
+				joincost = Math.min(leftpages, rightpages) + leftpages*rightpages;
+				break;
+			case JoinType.BLOCKNESTED:
+				int numOfIteration = ((int) Math.ceil((double) Math.min(rightpages, leftpages)/numbuff) - 2);
+				System.out.println(numOfIteration);
+				joincost = numOfIteration * Math.max(rightpages, leftpages);
+				break;
+			case JoinType.SORTMERGE:
+				joincost = leftpages + rightpages + getSortCost(numbuff, leftpages) + getSortCost(numbuff, rightpages);
+				break;
+			case JoinType.HASHJOIN:
+				joincost = 3 * (leftpages + rightpages);
+				break;
+			default:
+				joincost=0;
+				break;
 		}
 
 		cost = cost+joincost;
@@ -177,7 +154,6 @@ public class PlanCost{
 	 ** And statistics about the attributes
 	 ** Selection is performed on the fly, so no cost involved
 	 **/
-
 	protected int getStatistics(Select node){
 		//System.out.println("PlanCost: here at line 127");
 		int intuples = calculateCost(node.getBase());
@@ -195,7 +171,6 @@ public class PlanCost{
 		Attribute fullattr = schema.getAttribute(index);
 
 		int exprtype = con.getExprType();
-
 
 		/** Get number of distinct values of selection attributes **/
 
@@ -227,14 +202,11 @@ public class PlanCost{
 		return outtuples;
 	}
 
-
-
 	/**  the statistics file <tablename>.stat to find the statistics
 	 ** about that table;
 	 ** This table contains number of tuples in the table
 	 ** number of distinct values of each attribute
 	 **/
-
 	protected int getStatistics(Scan node) {
 		String tablename = node.getTabName();
 		String filename = tablename+".stat";
@@ -262,12 +234,9 @@ public class PlanCost{
 			System.exit(1);
 		}
 
-
 		String temp = tokenizer.nextToken();
 		/** number of tuples in this table; **/
 		int numtuples = Integer.parseInt(temp);
-
-
 
 		try{
 			line = in.readLine();
@@ -287,8 +256,8 @@ public class PlanCost{
 			Integer distinctValues = Integer.valueOf(temp);
 			ht.put(attr,distinctValues);
 		}
-		/** number of tuples per page**/
 
+		/** number of tuples per page**/
 		int tuplesize = schema.getTupleSize();
 		int pagesize= Batch.getPageSize()/tuplesize;
 		//Batch.capacity();
@@ -301,20 +270,7 @@ public class PlanCost{
 			System.exit(1);
 		}
 
-
 		//System.out.println("Scan: tablename="+tablename+"pres cost="+numpages+"total cost="+cost);
 		return numtuples;
 	}
-
 }
-
-
-
-
-
-
-
-
-
-
-
