@@ -11,7 +11,7 @@ import java.util.HashSet;
 
 public class DPPlan extends BasicPlan {
     private ArrayList<String> joinTablesList;       // list of distinct tables that are involved in join query
-    private ArrayList<String> currentResult;                   // helper variable for generating combination
+    private ArrayList<String> currentResult;        // helper variable for generating combination
     private HashMap<String, Integer> memo;          // memo table of <TableCombination, cost>
 
     public DPPlan(SQLQuery sqlquery) {
@@ -48,15 +48,16 @@ public class DPPlan extends BasicPlan {
 
         for (int i=2; i<=joinTablesList.size(); i++) {
             // calculate cost for each i-pair-wise-tables, and select the minimum one
-            ArrayList<ArrayList<String>> permutations = generateCombination(i);
+            ArrayList<ArrayList<String>> permutations = generateCombination(joinTablesList, i);
 
             for (ArrayList<String> permutation : permutations) {
                 int minCost = Integer.MAX_VALUE;
-                ArrayList<String[]> planList = generatePlans(permutation);
+                ArrayList<ArrayList<ArrayList<String>>> planList = generatePlans(permutation);
 
                 for (int j=0; j<planList.size(); j++) {
-                    String lhsJoin = planList.get(j)[0];
-                    String rhsJoin = planList.get(j)[1];
+                    ArrayList<String> lhsJoin = planList.get(j).get(0);
+                    ArrayList<String> rhsJoin = planList.get(j).get(1);
+
                     int cost = joinPlanCost(lhsJoin, rhsJoin);
 
                     if (cost < minCost) {
@@ -74,7 +75,7 @@ public class DPPlan extends BasicPlan {
         }
     }
 
-    private int joinPlanCost(String leftPlanName, String rightPlanName) {
+    private int joinPlanCost(ArrayList<String> leftPlanName, ArrayList<String> rightPlanName) {
         // sub-plan must always inside the memo table
         int leftPlanCost = 0;
         int rightPlanCost = 0;
@@ -103,42 +104,64 @@ public class DPPlan extends BasicPlan {
         return 0;
     }
 
-    private ArrayList<String[]> generatePlans(ArrayList<String> sources) {
+    private ArrayList<ArrayList<ArrayList<String>>> generatePlans(ArrayList<String> sources) {
         if (sources.size() <= 1) {
             System.out.println("Invalid source in generatePlan method!");
             return new ArrayList<>();
         }
 
-        ArrayList<String[]> resultList = new ArrayList<>();
-        for (int i=1; i<sources.size()-1; i++) {
-            String[] tmp = new String[2];
-            for (int j=0; j<i; j++) {
-                tmp[0] += sources.get(j);
+        ArrayList<ArrayList<ArrayList<String>>> resultList = new ArrayList<>();
+        for (int i=1; i<sources.size(); i++) {
+            ArrayList<ArrayList<String>> allLHS = generateCombination(sources, i);
+
+            for (int j=0; j<allLHS.size(); j++) {
+                // for each lhs, find corresponding rhs
+                ArrayList<String> lhs = allLHS.get(j);
+                ArrayList<String> rhs = new ArrayList<String>();
+
+                // traverse through sources to construct rhs
+                for (int k=0; k<sources.size(); k++) {
+                    if (!lhs.contains(sources.get(k))) {
+                        rhs.add(sources.get(k));
+                    }
+                }
+                ArrayList<ArrayList<String>> tmp = new ArrayList<>();
+                tmp.add(lhs);
+                tmp.add(rhs);
+                resultList.add(tmp);
             }
-            for (int j=i; j<sources.size(); j++) {
-                tmp[1] += sources.get(j);
-            }
-            resultList.add(tmp);
         }
         return resultList;
     }
 
-    private ArrayList<ArrayList<String>> generateCombination(int number) {
+    /** Generate all possible combination of choosing k distinct elements from joinTablesList **/
+    private ArrayList<ArrayList<String>> generateCombination(ArrayList<String> sourceList, int k) {
         ArrayList<ArrayList<String>> result = new ArrayList<>();
-        recursiveCombine(result, 0, number);
+        recursiveCombine(sourceList, result, 0, k);
         return result;
     }
 
-    private void recursiveCombine(ArrayList<ArrayList<String>> result, int offset, int sizeNeeded) {
+    private void recursiveCombine(ArrayList<String> sourceList, ArrayList<ArrayList<String>> result,
+                                  int offset, int sizeNeeded) {
         if (sizeNeeded == 0) {
-            result.add(currentResult);
+            result.add(new ArrayList(currentResult));
+            return;
         }
 
-        for (int i=offset; i<joinTablesList.size()-sizeNeeded; i++) {
+        for (int i=offset; i<=sourceList.size()-sizeNeeded; i++) {
             // choose or not choose
-            currentResult.add(joinTablesList.get(i));
-            recursiveCombine(result, i + 1, sizeNeeded - 1);
+            System.out.println(i + "  " + sizeNeeded);
+            currentResult.add(sourceList.get(i));
+            recursiveCombine(sourceList, result, i + 1, sizeNeeded - 1);
             currentResult.remove(currentResult.size() - 1);
         }
+    }
+
+    private String convertLstToString(ArrayList<String> source) {
+        String result = "";
+        for (int i=0; i<source.size(); i++) {
+            result += source.get(i);
+        }
+        return result;
     }
 }
