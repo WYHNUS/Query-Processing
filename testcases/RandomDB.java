@@ -181,7 +181,7 @@ public class RandomDB{
 			outstat.close();
 			in.close();
 		}catch(IOException io){
-			System.out.println("error in IO: " + io.printStackTrace());
+//			System.out.println("error in IO: " + io.printStackTrace());
 			System.exit(1);
 		}
 	}
