@@ -1,5 +1,5 @@
 3
 48
 aid INTEGER 60000 PK 4
-aname STRING.Organization 20 NK 40
+aname STRING 20 NK 40
 cruisingrange INTEGER 200000 NK 4

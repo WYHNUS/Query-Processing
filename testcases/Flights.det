@@ -1,8 +1,8 @@
 6
 108
 flno INTEGER 60000 PK 4
-from STRING.Location 20 NK 40
-to STRING.Location 20 NK 40
+from STRING 20 NK 40
+to STRING 20 NK 40
 distance INTEGER 50000 NK 4
-departs TIME 5 NK 10
-arrives TIME 5 NK 10
+departs REAL 5 NK 10
+arrives REAL 5 NK 10
