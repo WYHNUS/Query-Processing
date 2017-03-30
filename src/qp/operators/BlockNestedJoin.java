@@ -10,6 +10,7 @@ import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import qp.optimizer.BufferManager;
 import qp.utils.Attribute;
 import qp.utils.Batch;
 import qp.utils.Tuple;
@@ -43,7 +44,7 @@ public class BlockNestedJoin extends Join {
 		super(jn.getLeft(), jn.getRight(), jn.getCondition(), jn.getOpType());
 		schema = jn.getSchema();
 		jointype = jn.getJoinType();
-		numBuff = jn.getNumBuff();
+		numBuff = BufferManager.getBuffersPerJoin();
 		blockSize = numBuff - 2;
 	}
 	
