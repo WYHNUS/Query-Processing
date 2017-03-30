@@ -45,6 +45,9 @@ public abstract class Optimizer {
                 case JoinType.HASHJOIN:
                     NestedJoin hj = new NestedJoin((Join) node);
 	                /* + other code */
+                    nj.setLeft(left);
+                    nj.setRight(right);
+                    nj.setNumBuff(numbuff);
                     return hj;
 
                 default:
