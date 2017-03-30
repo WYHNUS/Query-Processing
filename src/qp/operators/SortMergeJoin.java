@@ -1,323 +1,186 @@
-/** page nested join algorithm **/
-
 package qp.operators;
 
-import qp.sorter.*;
-import qp.sorter.std.*;
-import qp.sorter.util.*;
-import qp.utils.*;
-import java.io.*;
-import java.util.*;
-import java.lang.*;
+import java.util.ArrayList;
+import java.util.List;
 
-public class SortMergeJoin extends Join{
+import qp.utils.Attribute;
+import qp.utils.Batch;
+import qp.utils.OrderByEnum;
+import qp.utils.Tuple;
 
-	Sorter<Tuple> sorter;
-	int batchsize;  //Number of tuples per out batch
-	ArrayList<Tuple> leftBuffer;
-	ArrayList<Tuple> rightBuffer;
+public class SortMergeJoin extends Join {
+	//same parater setting as nestedjoin
+	int batchsize;
+	int leftindex;
+	int rightindex;
+	Batch leftbatch;
+	Batch rightbatch;
+	Batch outbatch;
+	Batch outbatchOverflow;
+	//specify the order as ascending;
+	OrderByEnum orderByEnum = OrderByEnum.ASC;
+	Tuple leftTuple;
+	Tuple rightTuple;
+	//Lists to store resultant tuples on the join condition
+	//from left and rigt tables
+	List<Tuple> resultRightTuples;
+	List<Tuple> resultLeftTuples;
 
-	/** The following fields are useful during execution of
-	 ** the SortMergeJoin operation
-	 **/
-	int leftindex;     // Index of the join attribute in left table
-	int rightindex;    // Index of the join attribute in right table
-
-	String leftTablePath;
-	String rightTablePath;    // The file name where the right table is materialize
-
-	String outFileName;
-
-	Batch outbatch;   // Output buffer
-	Batch leftbatch;  // Buffer for left input stream
-	Batch rightbatch;  // Buffer for right input stream
-	ObjectInputStream lin; // File pointer to the left hand materialized file
-	ObjectInputStream rin; // File pointer to the right hand materialized file
-	ObjectOutputStream lout;
-	ObjectOutputStream rout;
-
-	static int leftfilenum=0;
-	static int rightfilenum=0;
-
-	int lcurs;    // Cursor for left side buffer
-	int rcurs;    // Cursor for right side buffer
-	boolean eosl;  // Whether end of stream (left table) is reached
-	boolean eosr;  // End of stream (right table)
-
-	public SortMergeJoin(Join jn){
-		super(jn.getLeft(),jn.getRight(),jn.getCondition(),jn.getOpType());
+	public SortMergeJoin(Join jn) {
+		super(jn.getLeft(), jn.getRight(), jn.getCondition(), jn.getOpType());
 		schema = jn.getSchema();
 		jointype = jn.getJoinType();
 		numBuff = jn.getNumBuff();
-		leftBuffer = new ArrayList<Tuple> ();
-		rightBuffer = new ArrayList<Tuple> ();
-		sorter = new Sorter<Tuple>();
+	}
+	//methods to extract next tuple
+	private Tuple getNextTuple(Batch batch, Operator node) {
+		if (batch != null) {
+			Tuple tuple = batch.getTuples().get(0);
+			batch.getTuples().remove(0);
+			return tuple;
+		} else {
+			return null;
+		}
 	}
 
+	private Tuple nextLeftTuple() {
+		if (leftbatch.isEmpty()) {
+			leftbatch = left.next();
+		}
+		return getNextTuple(leftbatch, left);
+	}
 
-	/** During open finds the index of the join attributes
-	 **  Materializes the right hand side into a file
-	 **  Opens the connections
-	 **/
+	private Tuple nextRightTuple() {
+		if (rightbatch.isEmpty()) {
+			rightbatch = right.next();
+		}
+		return getNextTuple(rightbatch, right);
+	}
 
-
-
-	public boolean open(){
-
-		/** select number of tuples per batch **/
-		int tuplesize=schema.getTupleSize();
-		batchsize=Batch.getPageSize()/tuplesize;
+	public boolean open() {
+		int tuplesize = schema.getTupleSize();
+		batchsize = Batch.getPageSize() / tuplesize;
 
 		Attribute leftattr = con.getLhs();
-		Attribute rightattr =(Attribute) con.getRhs();
+		Attribute rightattr = (Attribute) con.getRhs();
 		leftindex = left.getSchema().indexOf(leftattr);
 		rightindex = right.getSchema().indexOf(rightattr);
-		Batch leftpage;
-		Batch rightpage;
 
-		/** initialize the cursors of input buffers **/
-		lcurs = 0; rcurs =0;
-		eosl=false;
-		eosr=false;
-		if(!left.open() || !right.open()) {
+		if (!left.open()) {
 			return false;
-		} else {
-			try {
-				leftfilenum++;
-				leftTablePath = "lefttemp-" + String.valueOf(leftfilenum);
-				File output = new File(leftTablePath);
-				lout = new ObjectOutputStream(new FileOutputStream(output));
-				while( (leftpage = left.next()) != null){
-					lout.writeObject(leftpage);
-				}
-				lout.close();
-				lin = new ObjectInputStream(new FileInputStream(output));
-				leftTablePath = "sorted " + leftTablePath;
-				File sortedOutput = new File(leftTablePath);
-				lout = new ObjectOutputStream(new FileOutputStream(sortedOutput));
-				sorter = new Sorter<Tuple>(new SortConfig(numBuff - 1).withMaxMemoryUsage((long)numBuff * Batch.getPageSize()));
-				sorter.setComparator(new TupleComparator());
-				sorter.sort(lin, lout);
-				lin.close();
-				lout.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			try {
-				rightfilenum++;
-				rightTablePath = "righttemp-" + String.valueOf(leftfilenum);
-				File output = new File(rightTablePath);
-				rout = new ObjectOutputStream(new FileOutputStream(output));
-				while( (rightpage = right.next()) != null){
-					rout.writeObject(rightpage);
-				}
-				rout.close();
-				rin = new ObjectInputStream(new FileInputStream(output));
-				rightTablePath = "sorted " + rightTablePath;
-				File sortedOutput = new File(rightTablePath);
-				rout = new ObjectOutputStream(new FileOutputStream(sortedOutput));
-				sorter = new Sorter<Tuple>(new SortConfig(numBuff - 1).withMaxMemoryUsage((long)numBuff * Batch.getPageSize()));
-				sorter.setComparator(new TupleComparator());
-				sorter.sort(rin, rout);
-				rin.close();
-				rout.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-
-
-			return true;
 		}
-
-
-
+		if (!right.open()) {
+			return false;
+		}		
+		leftbatch = left.next();
+		rightbatch = right.next();
+		resultRightTuples = new ArrayList<Tuple>();
+		resultLeftTuples = new ArrayList<Tuple>();
+		leftTuple = getNextTuple(leftbatch, left);
+		rightTuple = getNextTuple(rightbatch, right);
+		outbatchOverflow = new Batch(batchsize);
+		return true;
 	}
 
-
-
-	/** from input buffers selects the tuples satisfying join condition
-	 ** And returns a page of output tuples
-	 **/
-
-
-	public Batch next(){
-		//System.out.print("NestedJoin:--------------------------in next----------------");
-		//Debug.PPrint(con);
-		//System.out.println();
-		int i,j;
-		if(eosl || eosr){
-			close();
+	public Batch next() {
+		if (joinIsCompleted()) {
 			return null;
 		}
 		outbatch = new Batch(batchsize);
 
-
-		while(!outbatch.isFull()){
-
-			if(lcurs==0){
-				/** new left page is to be fetched**/
-				leftbatch =(Batch) left.next();
-				if(leftbatch==null){
-					eosl=true;
-					return outbatch;
-				}
-			}
-
-			if(rcurs==0) {
-				rightbatch = (Batch) right.next();
-				if(rightbatch==null) {
-					eosr=true;
-					return outbatch;
-				}
-			}
-
-			try {
-				lin = new ObjectInputStream(new FileInputStream(leftTablePath));
-				rin = new ObjectInputStream(new FileInputStream(rightTablePath));
-			} catch (IOException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
-
-			while(eosl==false && eosr==false){
-
-				try{
-					if(rcurs==0 && lcurs==0){
-						leftbatch = (Batch) lin.readObject();
-						rightbatch = (Batch) rin.readObject();
-					}
-					i=lcurs;
-					j=rcurs;
-					while(i<leftbatch.size()){
-						while(j<rightbatch.size()){
-							while(Tuple.compareTuples(leftbatch.elementAt(i), 
-									rightbatch.elementAt(j), leftindex, rightindex) != 0) {
-								if(Tuple.compareTuples(leftbatch.elementAt(i), 
-										rightbatch.elementAt(j), leftindex, rightindex) > 0) {
-									j++;
-								} else {
-									i++;
-								}
-							}
-							int Istart = i;
-							int Jstart = j;
-							while(i+1<leftbatch.size() && 
-									Tuple.compareTuples(leftbatch.elementAt(i), leftbatch.elementAt(i+1), leftindex) == 0){
-								i++;
-							}
-							while(j+1<rightbatch.size() && 
-									Tuple.compareTuples(rightbatch.elementAt(i), rightbatch.elementAt(i+1), rightindex) == 0){
-								j++;
-							}
-							int Iend = i;
-							int Jend = j;
-							for (int a = Istart; a<= Iend; a++) {
-								for (int b = Jstart; b<=Jend; b++) {
-									Tuple outtuple = leftbatch.elementAt(a).joinWith(rightbatch.elementAt(b));
-									outbatch.add(outtuple);
-									if(outbatch.isFull()){
-										if(i==leftbatch.size()-1 && j==rightbatch.size()-1){//case 1
-											lcurs=0;
-											rcurs=0;
-										}else if(i!=leftbatch.size()-1 && j==rightbatch.size()-1){//case 2
-											lcurs = i+1;
-											rcurs = 0;
-										}else if(i==leftbatch.size()-1 && j!=rightbatch.size()-1){//case 3
-											lcurs = 0;
-											rcurs = j+1;
-										}else{
-											lcurs = i+1;
-											rcurs =j+1;
-										}
-										return outbatch;
-									}
-								}
-							}
-						}
-						rcurs =0;
-					}
-					lcurs=0;
-				}catch(EOFException e){
-					try{
-						rin.close();
-					}catch (IOException io){
-						System.out.println("NestedJoin:Error in temporary file reading");
-					}
-					eosr=true;
-				}catch(ClassNotFoundException c){
-					System.out.println("NestedJoin:Some error in deserialization ");
-					System.exit(1);
-				}catch(IOException io){
-					System.out.println("NestedJoin:temporary file reading error");
-					System.exit(1);
-				}
-			}
+		// add the one of the previous work that would have been overflowed
+		while (!outbatch.isFull() && !outbatchOverflow.isEmpty()) {
+			outbatch.add(outbatchOverflow.elementAt(0));
+			outbatchOverflow.remove(0);
 		}
 
+		// We continue the join
+		while (!outbatch.isFull() && !joinIsCompleted()) {
+			int compare = compareTuplesForJoin(leftTuple, rightTuple);
+			if (compare == 0) {
+				resultLeftTuples.add(leftTuple);
+				resultRightTuples.add(rightTuple);
+				// get all the tuple from the right that are equal
+				rightTuple = nextRightTuple();
+				while (rightTuple != null && compareTuplesForJoin(resultLeftTuples.get(0), rightTuple) == 0) {
+					resultRightTuples.add(rightTuple);
+					rightTuple = nextRightTuple();
+				}
+				// get all the tuple from the left that are equal
+				leftTuple = nextLeftTuple();
+				while (leftTuple != null && compareTuplesForJoin(leftTuple, resultRightTuples.get(0)) == 0) {
+					resultLeftTuples.add(leftTuple);
+					leftTuple = nextLeftTuple();
+				}
+				
+				for (Tuple leftTuple : resultLeftTuples) {
+					for (Tuple rightTuple : resultRightTuples) {
+						if (!outbatch.isFull()) {
+							// System.out.println("add: " + leftTuple.dataAt(leftindex) + "=" +
+							// rightTuple.dataAt(rightindex));
+							outbatch.add(leftTuple.joinWith(rightTuple));
+						} else {
+							// System.out.println("addT: " + leftTuple.dataAt(leftindex) + "=" +
+							// rightTuple.dataAt(rightindex));
+							outbatchOverflow.add(leftTuple.joinWith(rightTuple));
+						}
+					}
+				}
+				resultRightTuples = new ArrayList<Tuple>();
+				resultLeftTuples = new ArrayList<Tuple>();
 
+			} else if (compare < 0) {
+				leftTuple = nextLeftTuple();
+			} else if (compare > 0) {
+				rightTuple = nextRightTuple();
+			}
 
-
+		}
 		return outbatch;
 	}
 
+	public boolean close() {
+		if (left.close() && right.close()) {
 
+			return true;
+		} else
+			return false;
+	}
 
-	/** Close the operator */
-	public boolean close(){
+	/**
+	 * To know when we should stop the operator.
+	 * 
+	 * @return
+	 */
+	private boolean joinIsCompleted() {
+		return leftbatch == null || rightbatch == null;
+	}
 
-		File left = new File(leftTablePath);
-		File right = new File(rightTablePath);
-		left.delete();
-		right.delete();
-		return true;
-
+	/**
+	 * To know from which table the next tuple should be taken.
+	 * 
+	 * @throws Exception
+	 */
+	private int compareTuplesForJoin(Tuple leftTuple, Tuple rightTuple) throws RuntimeException {
+		// System.out.println(leftTuple.dataAt(leftindex) + "?=" + rightTuple.dataAt(rightindex));
+		int compareTuples = Tuple.compareTuples(leftTuple, rightTuple, leftindex, rightindex);
+		switch (orderByEnum) {
+		case ASC:
+			return compareTuples;
+		case DESC:
+			return -compareTuples;
+		default:
+			throw new RuntimeException("No orderByOption");
+		}
 	}
 
 
+
+	/**
+	 * @param orderByEnum
+	 *        the orderByOption to set
+	 */
+	public void setOrderByOption(OrderByEnum orderByEnum) {
+		this.orderByEnum = orderByEnum;
+	}
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

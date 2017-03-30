@@ -1,5 +1,4 @@
 2
-12
-cid INTEGER 1000 PK 4
-eid INTEGER 100 FK 4
-aid INTEGER 100 FK 4
+8
+Employees.eid INTEGER 60000 FK 4
+Aircrafts.aid INTEGER 60000 FK 4
