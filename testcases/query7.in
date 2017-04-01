@@ -1,3 +1,3 @@
-SELECT Employees.eid, Employees.ename, Employees.salary 
+SELECT *
 FROM Employees, Certified, Schedule, Aircrafts, Flights
 WHERE Employees.eid = Certified.eid, Certified.aid = Schedule.aid, Aircrafts.aid = Schedule.aid, Flights.flno = Schedule.flno 
