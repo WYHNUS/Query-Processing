@@ -161,6 +161,7 @@ public class DPPlan extends BasicPlan {
         }
 
         // print out the final join cost
+        System.out.println("1");
         System.out.println("Final join plan cost: " + costMemo.get(convertLstToString(joinTablesList)));
 
         // assign the root
