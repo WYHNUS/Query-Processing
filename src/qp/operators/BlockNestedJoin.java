@@ -17,7 +17,6 @@ import qp.utils.Tuple;
 
 
 public class BlockNestedJoin extends Join {
-
 	int batchsize;  //Number of tuples per out batch
 	int blockSize;
 	/** The following fields are useful during execution of
@@ -115,12 +114,11 @@ public class BlockNestedJoin extends Join {
 		else
 			return false;
 	}
+
 	/** from input buffers selects the tuples satisfying join condition
 	 ** And returns a page of output tuples
 	 **/
-
 	public Batch next() {
-
 		// System.out.print("BlockNestedJoin:--------------------------in next----------------");
 		// Debug.PPrint(con);
 		// System.out.println();
@@ -133,9 +131,8 @@ public class BlockNestedJoin extends Join {
 		Batch newleft;
 
 		while (!outbatch.isFull()) {
-
 			if (lcurs == 0 && eosr == true) {
-				/** new left block is to be fetched**/
+				/** new left block is to be fetched **/
 				leftbatches = new ArrayList<Batch>(blockSize);
 				for (i = 0; i < blockSize; i++) {
 					newleft = (Batch) left.next();

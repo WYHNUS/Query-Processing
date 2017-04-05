@@ -71,7 +71,7 @@ public class DPPlan extends BasicPlan {
          * randomly select a join type, or other choices
          **/
         int numJMeth = JoinType.numJoinTypes();
-        int joinMethod = 2;// RandNumb.randInt(0, numJMeth - 1);
+        int joinMethod = 1;// RandNumb.randInt(0, numJMeth - 1);
 
         // bottom-up DP initialization
         for (int i=0; i<numJoin; i++) {
@@ -88,7 +88,6 @@ public class DPPlan extends BasicPlan {
                 if (nestedDict.containsKey(rightTableName)) {
                     conditionList = nestedDict.get(rightTableName);
                 }
-
             }
             conditionList.add(cn);
             nestedDict.put(rightTableName, conditionList);
@@ -117,6 +116,7 @@ public class DPPlan extends BasicPlan {
                 ArrayList<String> minRhsJoin = new ArrayList<>();
                 ArrayList<ArrayList<ArrayList<String>>> planList = generatePlans(combination);
 
+                // compute cost for all possible plans of a given combination
                 for (int j=0; j<planList.size(); j++) {
                     ArrayList<String> lhsJoin = planList.get(j).get(0);
                     ArrayList<String> rhsJoin = planList.get(j).get(1);
@@ -131,14 +131,16 @@ public class DPPlan extends BasicPlan {
                     }
                 }
 
-                // concatenate String together to generate key
-                costMemo.put(fullPlanName, minCost);
-
                 /** construct corresponding join node for sub-optimal solution **/
                 String leftPlanName = convertLstToString(minLhsJoin);
                 String rightPlanName = convertLstToString(minRhsJoin);
                 Operator left = joinMemo.get(leftPlanName);
                 Operator right = joinMemo.get(rightPlanName);
+
+                /** temporary check for skipping cross product **/
+                if (left == null || right == null) {
+                    continue;
+                }
 
                 // clone left and right operators before performing any action
                 Operator minLeft = (Operator) left.clone();
@@ -147,21 +149,37 @@ public class DPPlan extends BasicPlan {
                 minRight.setSchema((Schema) right.getSchema().clone());
 
                 // check for applicable conditions, and construct new Join Operator if possible
-                ArrayList<Operator> pair = joinTables(minLhsJoin, minRhsJoin, minLeft, minRight, joinMethod);
-                minLeft = pair.get(0); minRight = pair.get(1);
-                pair = joinTables(minRhsJoin, minLhsJoin, minLeft, minRight, joinMethod);
-                minLeft = pair.get(0); minRight = pair.get(1);
+                ArrayList triple = joinTables(minLhsJoin, minRhsJoin, minLeft, minRight, joinMethod);
+                boolean shouldCrossProduct = (boolean) triple.get(0);
+                minLeft = (Operator) triple.get(1);
+                minRight = (Operator) triple.get(2);
+
+                // need to check A x B and B x A
+                triple = joinTables(minRhsJoin, minLhsJoin, minLeft, minRight, joinMethod);
+                shouldCrossProduct = (shouldCrossProduct && (boolean) triple.get(0));
+                minLeft = (Operator) triple.get(1);
+                minRight = (Operator) triple.get(2);
+
+                if (shouldCrossProduct) {
+                    continue;   /** Temporarily skip cross production... **/
+                    // perform cross product between minLeft and minRight
+//                    Join minJoinNode = new Join(minLeft, minRight, new Condition(<what should be filled in here...>), OpType.JOIN);
+//                    // reassign
+//                    minLeft = minJoinNode;
+//                    minRight = (Operator) minJoinNode.clone();
+//                    minRight.setSchema((Schema) minJoinNode.getSchema().clone());
+                }
 
                 // store the result Join Operator into memo table (minRight and minLeft should have the same structure)
                 joinMemo.put(fullPlanName, minRight);
-
+                // update cost
+                costMemo.put(fullPlanName, minCost);
                 // assign metadata
                 assignMetaData(fullPlanName, leftPlanName, rightPlanName);
             }
         }
 
         // print out the final join cost
-        System.out.println("1");
         System.out.println("Final join plan cost: " + costMemo.get(convertLstToString(joinTablesList)));
 
         // assign the root
@@ -210,13 +228,16 @@ public class DPPlan extends BasicPlan {
         metaMemo.put(fullPlanName, new Metadata(outNumTuples, outTupleSize, outAttributes));
     }
 
-    private ArrayList<Operator> joinTables(ArrayList<String> minLhsJoin, ArrayList<String> minRhsJoin,
+    private ArrayList joinTables(ArrayList<String> minLhsJoin, ArrayList<String> minRhsJoin,
                             Operator minLeft, Operator minRight, int joinMethod) {
+        boolean shouldCrossProduct = true;
         for (int j=0; j<minLhsJoin.size(); j++) {
             for (int k=0; k<minRhsJoin.size(); k++) {
                 ArrayList<Condition> conditions = getRelation(minLhsJoin.get(j), minRhsJoin.get(k));
                 if (conditions != null) {
                     for (Condition condition: conditions) {
+                        shouldCrossProduct = false;     // has join condition between the two tables
+
                         Join minJoinNode = new Join(minLeft, minRight, condition, OpType.JOIN);
                         minJoinNode.setSchema(minLeft.getSchema().joinWith(minRight.getSchema()));
                         minJoinNode.setJoinType(joinMethod);
@@ -229,10 +250,11 @@ public class DPPlan extends BasicPlan {
                 }
             }
         }
-        ArrayList<Operator> pair = new ArrayList<>();
-        pair.add(minLeft);
-        pair.add(minRight);
-        return pair;
+        ArrayList result = new ArrayList<>();
+        result.add(new Boolean(shouldCrossProduct));
+        result.add(minLeft);
+        result.add(minRight);
+        return result;
     }
 
     private ArrayList<Condition> getRelation(String lTable, String rTable) {
@@ -249,9 +271,9 @@ public class DPPlan extends BasicPlan {
         String leftPlanKeyName = convertLstToString(leftPlanName);
         String rightPlanKeyName = convertLstToString(rightPlanName);
 
-        if (!costMemo.containsKey(leftPlanKeyName) || costMemo.containsKey(rightPlanKeyName)) {
-        } else {
-            System.out.print("Error in calculating join plan cost! Left plan can't be empty!");
+        if (!costMemo.containsKey(leftPlanKeyName) || !costMemo.containsKey(rightPlanKeyName)) {
+//            System.out.print("Error in calculating join plan cost! Left plan can't be empty!");
+            return 100000000;  /** hard-coded number to indicate INF for cross-product **/
         }
         leftPlanCost = costMemo.get(leftPlanKeyName);
         rightPlanCost = costMemo.get(rightPlanKeyName);
@@ -292,12 +314,6 @@ public class DPPlan extends BasicPlan {
         String temp = tokenizer.nextToken();
         int numTuples = Integer.parseInt(temp);
 
-//        line = in.readLine();
-//        tokenizer = new StringTokenizer(line);
-//        if (tokenizer.countTokens() != numAttr) {
-//            System.out.println("incorrect format of statistics file " + fileName);
-//            System.exit(1);
-//        }
         in.close();
 
         /** number of tuples per page**/

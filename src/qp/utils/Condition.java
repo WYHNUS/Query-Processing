@@ -15,9 +15,9 @@ public class Condition {
     public static final int JOIN =2;
 
     Attribute lhs;   // left hand side of the condition
-    int optype;      // Wheter select condition or join condition
-    int exprtype;   // Comparision type, equal to/lessthan/greaterthan etc.,
-    Object rhs;   // This is Attribute for Join condition and String for Select Condition
+    int optype;      // Whether select condition or join condition
+    int exprtype;    // Comparision type, equal to/lessthan/greaterthan etc.,
+    Object rhs;      // This is Attribute for Join condition and String for Select Condition
 
 
     public Condition(Attribute attr, int type, Object value) {
@@ -71,7 +71,7 @@ public class Condition {
         } else {
             newrhs = (Attribute) ((Attribute) rhs).clone();
         }
-        Condition newcn = new Condition(newlhs,exprtype,newrhs);
+        Condition newcn = new Condition(newlhs, exprtype, newrhs);
         newcn.setOpType(optype);
         return newcn;
     }

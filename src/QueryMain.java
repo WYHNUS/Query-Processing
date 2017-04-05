@@ -124,7 +124,7 @@ public class QueryMain {
 		try {
 			out = new PrintWriter(new BufferedWriter(new FileWriter(resultFile)));
 		} catch (IOException io) {
-			System.out.println("QueryMain:error in opening result file: " + resultFile);
+			System.out.println("QueryMain: error in opening result file: " + resultFile);
 			System.exit(1);
 		}
 

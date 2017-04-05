@@ -26,7 +26,7 @@ public class Operator {
         this.optype = type;
     }
 
-    public int  getOpType(){
+    public int getOpType(){
         return optype;
     }
 

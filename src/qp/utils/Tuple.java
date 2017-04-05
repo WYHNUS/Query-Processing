@@ -31,10 +31,7 @@ public class Tuple implements Serializable, Comparable<Tuple>{
 		Object leftData = dataAt(leftindex);
 		Object rightData = right.dataAt(rightindex);
 
-		if(leftData.equals(rightData))
-			return true;
-		else
-			return false;
+		return leftData.equals(rightData);
 	}
 
 	/** Joining two tuples Without duplicate column elimination**/

@@ -5,7 +5,7 @@ package qp.utils;
 import java.util.Vector;
 import java.io.Serializable;
 
-public class Batch implements Serializable{
+public class Batch implements Serializable {
 
 	int MAX_SIZE;  // Number of tuples per page
 	static int PageSize;  /* Number of bytes per page**/
@@ -80,11 +80,8 @@ public class Batch implements Serializable{
 		return tuples.size();
 	}
 
-	public boolean isFull(){
-		if(size() == capacity())
-			return true;
-		else
-			return false;
+	public boolean isFull() {
+		return (size() == capacity());
 	}
 }
 

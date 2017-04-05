@@ -98,41 +98,40 @@ public class NestedJoin extends Join{
 	/** from input buffers selects the tuples satisfying join condition
 	 ** And returns a page of output tuples
 	 **/
-	public Batch next(){
+	public Batch next() {
 		//System.out.print("NestedJoin:--------------------------in next----------------");
 		//Debug.PPrint(con);
 		//System.out.println();
 		int i,j;
-		if(eosl){
+		if (eosl) {
 			close();
 			return null;
 		}
 		outbatch = new Batch(batchsize);
 
-		while(!outbatch.isFull()){
-			if(lcurs==0 && eosr==true){
-				/** new left page is to be fetched**/
-				leftbatch =(Batch) left.next();
-				if(leftbatch==null){
-					eosl=true;
+		while (!outbatch.isFull()) {
+			if (lcurs==0 && eosr==true) {
+				/** new left page is to be fetched **/
+				leftbatch = (Batch) left.next();
+				if (leftbatch == null) {
+					eosl = true;
 					return outbatch;
 				}
-				/** Whenver a new left page came , we have to start the
+				/** Whenever a new left page came, we have to start the
 				 ** scanning of right table
 				 **/
-				try{
-
+				try {
 					in = new ObjectInputStream(new FileInputStream(rfname));
 					eosr=false;
-				}catch(IOException io){
-					System.err.println("NestedJoin:error in reading the file");
+				} catch (IOException io) {
+					System.err.println("NestedJoin: error in reading the file");
 					System.exit(1);
 				}
 			}
 
-			while(eosr==false){
-				try{
-					if(rcurs==0 && lcurs==0){
+			while (eosr==false) {
+				try {
+					if (rcurs==0 && lcurs==0) {
 						rightbatch = (Batch) in.readObject();
 					}
 

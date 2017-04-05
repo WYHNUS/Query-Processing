@@ -223,7 +223,7 @@ public class PlanCost {
 			System.out.println("Error in opening file " + filename);
 			System.exit(1);
 		}
-		String line=null;
+		String line = null;
 
 		// First line = number of tuples
 		try {

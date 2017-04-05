@@ -6,8 +6,7 @@ package qp.operators;
 import qp.utils.*;
 import java.util.Vector;
 
-public class Join extends Operator{
-
+public class Join extends Operator {
     Operator left;   // left child
     Operator right;   // right child
     Condition con;     //join condition
@@ -74,12 +73,12 @@ public class Join extends Operator{
         return con;
     }
 
-    public Object clone(){
+    public Object clone() {
         Operator newleft = (Operator) left.clone();
         Operator newright =(Operator) right.clone();
         Condition newcond = (Condition) con.clone();
 
-        Join jn = new Join(newleft,newright,newcond,optype);
+        Join jn = new Join(newleft, newright, newcond, optype);
         Schema newSche = newleft.getSchema().joinWith(newright.getSchema());
         jn.setSchema(newSche);
         jn.setJoinType(jointype);
