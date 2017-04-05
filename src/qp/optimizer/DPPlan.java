@@ -154,8 +154,9 @@ public class DPPlan extends BasicPlan {
                 minLeft = (Operator) triple.get(1);
                 minRight = (Operator) triple.get(2);
 
-                // need to check A x B and B x A
-                triple = joinTables(minRhsJoin, minLhsJoin, minLeft, minRight, joinMethod);
+                // need to check both A x B and B x A
+//                triple = joinTables(minRhsJoin, minLhsJoin, minLeft, minRight, joinMethod);
+                triple = joinTables(minRhsJoin, minLhsJoin, minRight, minLeft, joinMethod);
                 shouldCrossProduct = (shouldCrossProduct && (boolean) triple.get(0));
                 minLeft = (Operator) triple.get(1);
                 minRight = (Operator) triple.get(2);
