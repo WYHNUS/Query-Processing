@@ -107,15 +107,15 @@ public class DPPlan extends BasicPlan {
 
         for (int i=2; i<=joinTablesList.size(); i++) {
             /** calculate cost for each i-pair-wise-tables, and record down the minimum one **/
-            ArrayList<ArrayList<String>> permutations = generateCombination(joinTablesList, i);
+            ArrayList<ArrayList<String>> combinations = generateCombination(joinTablesList, i);
 
-            for (ArrayList<String> permutation : permutations) {
-                String fullPlanName = convertLstToString(permutation);
+            for (ArrayList<String> combination : combinations) {
+                String fullPlanName = convertLstToString(combination);
                 int minCost = Integer.MAX_VALUE;
 
                 ArrayList<String> minLhsJoin = new ArrayList<>();
                 ArrayList<String> minRhsJoin = new ArrayList<>();
-                ArrayList<ArrayList<ArrayList<String>>> planList = generatePlans(permutation);
+                ArrayList<ArrayList<ArrayList<String>>> planList = generatePlans(combination);
 
                 for (int j=0; j<planList.size(); j++) {
                     ArrayList<String> lhsJoin = planList.get(j).get(0);
@@ -249,17 +249,12 @@ public class DPPlan extends BasicPlan {
         String leftPlanKeyName = convertLstToString(leftPlanName);
         String rightPlanKeyName = convertLstToString(rightPlanName);
 
-        if (costMemo.containsKey(leftPlanKeyName)) {
-            leftPlanCost = costMemo.get(leftPlanKeyName);
+        if (!costMemo.containsKey(leftPlanKeyName) || costMemo.containsKey(rightPlanKeyName)) {
         } else {
             System.out.print("Error in calculating join plan cost! Left plan can't be empty!");
         }
-
-        if (costMemo.containsKey(rightPlanKeyName)) {
-            rightPlanCost = costMemo.get(rightPlanKeyName);
-        } else {
-            System.out.print("Error in calculating join plan cost! Right plan can't be empty!");
-        }
+        leftPlanCost = costMemo.get(leftPlanKeyName);
+        rightPlanCost = costMemo.get(rightPlanKeyName);
 
         // compute the join cost for combining the two plans
         int pageSize = Batch.getPageSize();
@@ -268,8 +263,8 @@ public class DPPlan extends BasicPlan {
         Metadata leftMetadata = metaMemo.get(leftPlanKeyName);
         Metadata rightMetadata = metaMemo.get(rightPlanKeyName);
 
-        int leftCapacity = leftMetadata.tupleSize / pageSize;
-        int rightCapacity = rightMetadata.tupleSize / pageSize;
+        int leftCapacity = pageSize / leftMetadata.tupleSize;
+        int rightCapacity = pageSize / rightMetadata.tupleSize;
 
         int leftPages = (int) Math.ceil(1.0 * leftMetadata.numTuples / leftCapacity);
         int rightPages = (int) Math.ceil(1.0 * rightMetadata.numTuples / rightCapacity);
@@ -283,7 +278,7 @@ public class DPPlan extends BasicPlan {
         String fileName = tableName + ".stat";
         Schema schema = ((Operator) tabOpHash.get(tableName)).getSchema();
 
-        int numAttr = schema.getNumCols();
+//        int numAttr = schema.getNumCols();
 
         BufferedReader in = new BufferedReader(new FileReader(fileName));
         String line = in.readLine();   // First line = number of tuples
@@ -293,22 +288,22 @@ public class DPPlan extends BasicPlan {
             System.out.println("incorrect format of statistics file " + fileName);
             System.exit(1);
         }
-
+        /** number of tuples in this table **/
         String temp = tokenizer.nextToken();
-        /** number of tuples in this table; **/
         int numTuples = Integer.parseInt(temp);
-        line = in.readLine();
 
-        tokenizer = new StringTokenizer(line);
-        if (tokenizer.countTokens() != numAttr) {
-            System.out.println("incorrect format of statistics file " + fileName);
-            System.exit(1);
-        }
+//        line = in.readLine();
+//        tokenizer = new StringTokenizer(line);
+//        if (tokenizer.countTokens() != numAttr) {
+//            System.out.println("incorrect format of statistics file " + fileName);
+//            System.exit(1);
+//        }
+        in.close();
 
         /** number of tuples per page**/
         int tupleSize = schema.getTupleSize();
         int pageSize = Batch.getPageSize() / tupleSize;
-        int numPages= (int) Math.ceil(1.0 * numTuples / pageSize);
+        int numPages = (int) Math.ceil(1.0 * numTuples / pageSize);
 
         Vector attrList = schema.getAttList();
         ArrayList<Attribute> attributeList = new ArrayList<>();
@@ -354,6 +349,7 @@ public class DPPlan extends BasicPlan {
     /** Generate all possible combination of choosing k distinct elements from joinTablesList **/
     private ArrayList<ArrayList<String>> generateCombination(ArrayList<String> sourceList, int k) {
         ArrayList<ArrayList<String>> result = new ArrayList<>();
+        currentResult = new ArrayList<>();  // re-initialize global helper variable
         recursiveCombine(sourceList, result, 0, k);
         return result;
     }

@@ -1,4 +1,4 @@
-/** Attibute or column meta data **/
+/** Attribute or column meta data **/
 
 
 package qp.utils;

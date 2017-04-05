@@ -6,7 +6,7 @@ package qp.utils;
 import java.io.Serializable;
 import java.util.Vector;
 
-public class Schema implements Serializable{
+public class Schema implements Serializable {
 	Vector attset;  // the attributes belong to this schema
 	int tuplesize; 	// Number of bytes required for this tuple (size of record)
 
