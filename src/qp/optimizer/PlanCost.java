@@ -11,7 +11,7 @@ import java.util.Enumeration;
 import java.io.*;
 
 public class PlanCost {
-	int cost;
+	long cost;
 	int numtuple;
 
 	/** If buffers are not enough for a selected join
@@ -31,7 +31,7 @@ public class PlanCost {
 	}
 
 	/** returns the cost of the plan **/
-	public int getCost(Operator root){
+	public long getCost(Operator root){
 		isFeasible = true;
 		numtuple = calculateCost(root);
 		if (isFeasible==true) {
@@ -113,24 +113,23 @@ public class PlanCost {
 
 		/** now calculate the cost of the operation**/
 		int joinType = node.getJoinType();
-		int joinCost = PlanCost.getJoinCost(joinType, leftPages, rightPages);
+		long joinCost = PlanCost.getJoinCost(joinType, leftPages, rightPages);
 		//System.out.println("PlanCost: jointype = " + joinType);
 
 		cost = cost + joinCost;
 		return outtuples;
 	}
 
-	public static int getJoinCost(int joinType, int leftPages, int rightPages) {
-		int joinCost;
+	public static long getJoinCost(int joinType, int leftPages, int rightPages) {
+		long joinCost;
 		int numBuff = BufferManager.getBuffersPerJoin();
 
-		switch(joinType){
+		switch(joinType) {
 			case JoinType.NESTEDJOIN:
-				joinCost = Math.min(leftPages, rightPages) + leftPages*rightPages;
+				joinCost = Math.min(leftPages, rightPages) + ((long)leftPages) * rightPages;
 				break;
 			case JoinType.BLOCKNESTED:
-				int numOfIteration = ((int) Math.ceil((double) Math.min(rightPages, leftPages)/numBuff) - 2);
-				System.out.println(numOfIteration);
+                long numOfIteration = ((long) Math.ceil(1.0 * Math.min(rightPages, leftPages) / (numBuff - 2)));
 				joinCost = numOfIteration * Math.max(rightPages, leftPages);
 				break;
 			case JoinType.SORTMERGE:
@@ -140,14 +139,14 @@ public class PlanCost {
 				joinCost = 3 * (leftPages + rightPages);
 				break;
 			default:
-				joinCost=0;
+				joinCost = 0;
 				break;
 		}
 		return joinCost;
 	}
 
-	protected static int getSortCost(int numBuff, int numOfPages) {
-		int numOfIO = 0;
+	protected static long getSortCost(int numBuff, int numOfPages) {
+		long numOfIO = 0;
 		int numOfSortedRuns = (int) Math.ceil((double) numOfPages/numBuff);
 		int numOfPasses = (int) Math.ceil(Math.log(numOfSortedRuns) /Math.log(numBuff - 1));
 		numOfIO = 2 * (numOfPasses + 1) * numOfPages;

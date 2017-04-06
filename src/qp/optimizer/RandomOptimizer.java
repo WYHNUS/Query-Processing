@@ -52,7 +52,7 @@ public class RandomOptimizer extends Optimizer {
 		RandomInitialPlan rip = new RandomInitialPlan(sqlQuery);
 		numJoin = rip.getNumJoins();
 
-		int minCost = Integer.MAX_VALUE;
+		long minCost = Integer.MAX_VALUE;
 		Operator finalPlan = null;
 
 		/** numIter is number of times random restart **/
@@ -69,11 +69,11 @@ public class RandomOptimizer extends Optimizer {
 			System.out.println("-----------initial Plan-------------");
 			Debug.PPrint(initPlan);
 			PlanCost pc = new PlanCost();
-			int initCost = pc.getCost(initPlan);
+			long initCost = pc.getCost(initPlan);
 			System.out.println(initCost);
 
 			boolean flag = true;
-			int minNeighborCost = initCost; //just initialization purpose;
+			long minNeighborCost = initCost; //just initialization purpose;
 			Operator minNeighbor = initPlan; //just initialization purpose;
 			if (numJoin != 0) {
 				while (flag) {   // flag = false when local minimum is reached
@@ -97,7 +97,7 @@ public class RandomOptimizer extends Optimizer {
 						System.out.println("------------------neighbor--------------");
 						Debug.PPrint(neighbor);
 						pc = new PlanCost();
-						int neighborCost = pc.getCost(neighbor);
+						long neighborCost = pc.getCost(neighbor);
 						System.out.println(neighborCost);
 
 						if (neighborCost < minNeighborCost) {

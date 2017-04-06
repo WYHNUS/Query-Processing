@@ -45,7 +45,7 @@ public class DPPlan extends BasicPlan {
     // store the <lhsTable, rhsTable, Condition> relationship
     // Note: there might be multiple conditions between two tables
     private HashMap<String, HashMap<String, ArrayList<Condition>>> conditionDict;
-    private HashMap<String, Integer> costMemo;      // store <TableCombination, cost>
+    private HashMap<String, Long> costMemo;      // store <TableCombination, cost>
     private HashMap<String, Metadata> metaMemo;     // store <TableCombination, Metadata>
     private HashMap<String, Operator> joinMemo;     // store <TableCombination, JoinNode>
 
@@ -110,7 +110,7 @@ public class DPPlan extends BasicPlan {
 
             for (ArrayList<String> combination : combinations) {
                 String fullPlanName = convertLstToString(combination);
-                int minCost = Integer.MAX_VALUE;
+                long minCost = Long.MAX_VALUE;
 
                 ArrayList<String> minLhsJoin = new ArrayList<>();
                 ArrayList<String> minRhsJoin = new ArrayList<>();
@@ -121,7 +121,7 @@ public class DPPlan extends BasicPlan {
                     ArrayList<String> lhsJoin = planList.get(j).get(0);
                     ArrayList<String> rhsJoin = planList.get(j).get(1);
 
-                    int cost = joinPlanCost(lhsJoin, rhsJoin, joinMethod);
+                    long cost = joinPlanCost(lhsJoin, rhsJoin, joinMethod);
 
                     if (cost < minCost) {
                         minCost = cost;
@@ -155,7 +155,6 @@ public class DPPlan extends BasicPlan {
                 minRight = (Operator) triple.get(2);
 
                 // need to check both A x B and B x A
-//                triple = joinTables(minRhsJoin, minLhsJoin, minLeft, minRight, joinMethod);
                 triple = joinTables(minRhsJoin, minLhsJoin, minRight, minLeft, joinMethod);
                 shouldCrossProduct = (shouldCrossProduct && (boolean) triple.get(0));
                 minLeft = (Operator) triple.get(1);
@@ -265,16 +264,17 @@ public class DPPlan extends BasicPlan {
         return null;
     }
 
-    private int joinPlanCost(ArrayList<String> leftPlanName, ArrayList<String> rightPlanName, int joinMethod) {
+    private long joinPlanCost(ArrayList<String> leftPlanName, ArrayList<String> rightPlanName, int joinMethod) {
         // sub-plan must always inside the memo table
-        int leftPlanCost = 0;
-        int rightPlanCost = 0;
+        long leftPlanCost = 0;
+        long rightPlanCost = 0;
         String leftPlanKeyName = convertLstToString(leftPlanName);
         String rightPlanKeyName = convertLstToString(rightPlanName);
 
+        /** hard-coded number to indicate INF for cross-product **/
         if (!costMemo.containsKey(leftPlanKeyName) || !costMemo.containsKey(rightPlanKeyName)) {
 //            System.out.print("Error in calculating join plan cost! Left plan can't be empty!");
-            return 100000000;  /** hard-coded number to indicate INF for cross-product **/
+            return Long.MAX_VALUE;
         }
         leftPlanCost = costMemo.get(leftPlanKeyName);
         rightPlanCost = costMemo.get(rightPlanKeyName);
@@ -292,16 +292,14 @@ public class DPPlan extends BasicPlan {
         int leftPages = (int) Math.ceil(1.0 * leftMetadata.numTuples / leftCapacity);
         int rightPages = (int) Math.ceil(1.0 * rightMetadata.numTuples / rightCapacity);
 
-        int joinCost = PlanCost.getJoinCost(joinMethod, leftPages, rightPages);
+        long joinCost = PlanCost.getJoinCost(joinMethod, leftPages, rightPages);
 
         return leftPlanCost + rightPlanCost + joinCost;
     }
 
-    private int accessPlanCost(String tableName) throws Exception {
+    private long accessPlanCost(String tableName) throws Exception {
         String fileName = tableName + ".stat";
         Schema schema = ((Operator) tabOpHash.get(tableName)).getSchema();
-
-//        int numAttr = schema.getNumCols();
 
         BufferedReader in = new BufferedReader(new FileReader(fileName));
         String line = in.readLine();   // First line = number of tuples
