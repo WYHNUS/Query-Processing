@@ -28,6 +28,7 @@ public class HashJoin extends Join {
 	Hashtable<Integer, LinkedList<Tuple>> innerHashTable = null; /// hash table for left partition
 	LinkedList<Tuple> linkedlist = null;
 	
+    //define a put method for the inner hash table
 	public LinkedList<Tuple> put(Hashtable<Integer, LinkedList<Tuple>> innerHashTable, Integer key, LinkedList<Tuple> list) {
 		if (innerHashTable.containsKey(key)) {
 			LinkedList<Tuple> v = innerHashTable.get(key);
@@ -66,10 +67,10 @@ public class HashJoin extends Join {
 			return false;
 		if (!right.open())
 			return false;
-
+        // partition left table
 		HashingClass leftHasher = new HashingClass(left , numBuff - 1, prefix + "_left_");
 		leftPartitions = leftHasher.hashTable(leftindex);
-
+        // partition right table
 		HashingClass rightHasher = new HashingClass(right , numBuff - 1, prefix + "_right_");
 		rightPartitions = rightHasher.hashTable(rightindex);
 
@@ -186,26 +187,25 @@ public class HashJoin extends Join {
 								outbatch.add(outtuple);
 
 								if (outbatch.isFull()) {
-									//not finish scanning the list
-									if(m != linkedlist.size() - 1 ){
+									if(m != linkedlist.size() - 1 ){//not finish scanning the list
 										linkedlistindex = m + 1;
 										bcurs = parIndex;
 										rcurs = j;
-									}else if (j != rightbatch.size() - 1) {
+									}else if (j != rightbatch.size() - 1) {//finish scanning the list but not reach the end of right page
 										linkedlistindex = 0;
 										bcurs = parIndex;
 										rcurs = j + 1;
-									}else if (!eopr) {
+									}else if (!eopr) {//finish scanning the list and reach the end of right page, but not reach the end of right partition
 										linkedlistindex = 0;
 										bcurs = parIndex;
 										rcurs = 0;
 										eobr = true;
-									}else if (parIndex != numBuff - 2) {
+									}else if (parIndex != numBuff - 2) {//end of right partition, read next left partition
 										linkedlistindex = 0;
 										bcurs = parIndex + 1;
 										rcurs = 0;
 										eobr = true;
-									}else {
+									}else {//finish joining
 										linkedlistindex = 0;
 										bcurs = 0;
 										rcurs = 0;

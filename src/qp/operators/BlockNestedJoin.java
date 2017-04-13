@@ -172,6 +172,7 @@ public class BlockNestedJoin extends Join {
 						rightbatch = (Batch) in.readObject();
 					}
 					//join phase
+                    //for each block of the outer table, check all tuples of inner table
 					for (i = lcurs; i < leftTuplesInCurrentBlock.size(); i++) {
 
 						for (j = rcurs; j < rightbatch.size(); j++) {
@@ -184,7 +185,7 @@ public class BlockNestedJoin extends Join {
 								// System.out.println();
 								outbatch.add(outtuple);
 								if (outbatch.isFull()) {
-									if (i == leftTuplesInCurrentBlock.size() - 1 && j == rightbatch.size() - 1) {// 4 cases
+									if (i == leftTuplesInCurrentBlock.size() - 1 && j == rightbatch.size() - 1) {
 										lcurs = 0;
 										rcurs = 0;
 									} else if (i != leftTuplesInCurrentBlock.size() - 1 && j == rightbatch.size() - 1) {

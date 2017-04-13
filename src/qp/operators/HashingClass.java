@@ -8,8 +8,8 @@ import qp.utils.Tuple;
 public class HashingClass
 {
 	int batchsize;
-	int mod; /// mod no.
-	boolean eos; ///end of input stream
+	int mod; // hash function
+	boolean eos; //end of input stream
 	Schema schema;
 	String prefix;
 	Operator table;
@@ -25,10 +25,10 @@ public class HashingClass
 		eos = false;
 	}
 
-	///hash table into partitions
+	//hash table into partitions
 	public String[] hashTable(int attrIndex) 
 	{
-		int parIndex = 0; ///index for partition
+		int parIndex = 0; //partition index
 		int tuplesize = schema.getTupleSize();
 		batchsize = Batch.getPageSize() / tuplesize;
 		Batch tmpBuffer = new Batch(batchsize);
@@ -40,7 +40,7 @@ public class HashingClass
 
 		ObjectOutputStream[] out = new ObjectOutputStream[mod];
 
-		///one output file for each partition
+		//one output file for each partition
 		for( parIndex = 0 ; parIndex < mod ; parIndex++ )
 		{
 			fileNames[parIndex] = prefix + String.valueOf(parIndex);
@@ -55,17 +55,17 @@ public class HashingClass
 			}
 		}
 
-		/// read a page of table and write into diff partitions, process page by page
+		// read a page of table and write into diff partitions
 		while (!eos) 
 		{
 
-			tmpBuffer = table.next(); /// read a page
+			tmpBuffer = table.next();
 
-			/// if reach the end of table, output all buffers
+			//end of table, output all buffers
 			if (tmpBuffer == null) 
 			{
 				eos = true;
-				/// write out each buffer of partition if not empty
+				//write out each non-empty buffer of partition
 				for (parIndex = 0; parIndex < mod; parIndex++) 
 				{
 					try 
@@ -85,14 +85,14 @@ public class HashingClass
 				return fileNames;
 			}
 			
-			///put tuples of the page to corresponding partition buffers
+			//put tuples of the page to corresponding partition buffers
 			for (int i = 0; i < tmpBuffer.size(); i++) 
 			{
 				Tuple rec = tmpBuffer.elementAt(i);
 				parIndex = Integer.valueOf(String.valueOf(rec.dataAt(attrIndex))) % mod;
 				parBuffer[parIndex].add(rec);
 
-				///output partition buffer if full
+				//output partition buffer if full
 				if (parBuffer[parIndex].isFull())
 				{
 					try 
@@ -104,7 +104,7 @@ public class HashingClass
 						System.err.println(e.toString());
 						System.exit(1);
 					}
-					/// empty the partition buffer after output 
+					//clear the partition buffer after output 
 					parBuffer[parIndex] = new Batch(batchsize);
 				}
 			}
