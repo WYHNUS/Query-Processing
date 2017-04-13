@@ -136,7 +136,7 @@ public class PlanCost {
 				joinCost = leftPages + rightPages + getSortCost(numBuff, leftPages) + getSortCost(numBuff, rightPages);
 				break;
 			case JoinType.HASHJOIN:
-				joinCost = 3 * (leftPages + rightPages);
+				joinCost = 3 * ((long)leftPages + (long)rightPages);
 				break;
 			default:
 				joinCost = 0;

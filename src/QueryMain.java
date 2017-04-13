@@ -84,8 +84,8 @@ public class QueryMain {
 		/** Use either dynamic programming or random optimization algorithm
 		 *  to get an execution plan
 		 **/
-		Optimizer ro = new RandomOptimizer(sqlquery);
-//		Optimizer ro = new DPOptimizer(sqlquery);
+//		Optimizer ro = new RandomOptimizer(sqlquery);
+		Optimizer ro = new DPOptimizer(sqlquery);
 		Operator logicalRoot = ro.getOptimizedPlan();
 
 		if (logicalRoot == null) {
