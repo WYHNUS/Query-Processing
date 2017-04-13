@@ -71,7 +71,7 @@ public class DPPlan extends BasicPlan {
          * randomly select a join type, or other choices
          **/
         int numJMeth = JoinType.numJoinTypes();
-        int joinMethod = RandNumb.randInt(0, numJMeth - 1);
+        int joinMethod = 1; //RandNumb.randInt(0, numJMeth - 1);
 
         // bottom-up DP initialization
         for (int i=0; i<numJoin; i++) {
